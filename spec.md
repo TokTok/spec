@@ -408,7 +408,11 @@ the interface broadcast address on IPv4, the global broadcast address
 Tox UDP port (33445).
 
 The LAN Discovery packet:
-[uint8_t packet id (33)][32 bytes: DHT public key]
+
+Length | Contents
+------ | --------
+ 1     | uint8_t packet id (33)
+ 32    | DHT public key
 
 LAN Discovery packets contain the DHT public key of the sender. When a LAN
 Discovery packet is received, a DHT get nodes packet will be sent to the sender
@@ -463,7 +467,12 @@ recommended way is to encode it in hexadecimal format and have the user
 manually send it to the friend using another program.
 
 Tox ID:
-[long term public key (32 bytes)][nospam (4 bytes)][checksum (2 bytes)]
+
+Length | Contents
+------ | --------
+ 32    | long term public key
+ 4     | nospam
+ 2     | checksum
 
 The checksum is calculated by XORing the first two bytes of the ID with the
 next two bytes, then the next two bytes until all the 36 bytes have been XORed
@@ -512,9 +521,13 @@ received by the other is reached, when this happens it stops.
 
 List of Messenger packets:
 
-ONLINE: 
+## `ONLINE`
+
 length: 1 byte
-[uint8_t (24)]
+
+Length | Contents
+------ | --------
+  1    | uint8_t (0x18)
 
 Sent to a friend when a connection is established to tell them to mark us as
 online in their friends list. This packet and the OFFLINE packet are necessary
@@ -525,93 +538,145 @@ marked as online in the friendlist.
 
 On receiving this packet, Messenger will show the peer as being online.
 
-OFFLINE:
+## `OFFLINE`
+
 length: 1 byte
-[uint8_t (25)]
+
+Length | Contents
+------ | --------
+  1    | uint8_t (0x19)
 
 Sent to a friend when deleting the friend. Prevents a deleted friend from
 seeing us as online if we are connected to them because of a group chat.
 
 On receiving this packet, Messenger will show this peer as offline.
 
-NICKNAME:
+## `NICKNAME`
+
 length: 1 byte to 129 bytes.
-[uint8_t (48)][Nickname as a UTF8 byte string(Min length: 0 bytes, Max length: 128 bytes)]
+
+Length   | Contents
+-------- | --------
+  1      | uint8_t (0x30)
+[0, 128] | Nickname as a UTF8 byte string
+
+[N, M] means minimum length N, maximum length M (inclusive range).
 
 Used to send the nickname of the peer to others. This packet should be sent
 every time to each friend every time they come online and each time the
 nickname is changed.
 
-STATUSMESSAGE:
+## `STATUSMESSAGE`
+
 length: 1 byte to 1008 bytes.
-[uint8_t (49)][Status message as a UTF8 byte string(Min length: 0 bytes, Max length: 1007 bytes)]
+
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x31)
+[0, 1007] | Status message as a UTF8 byte string
 
 Used to send the status message of the peer to others. This packet should be
 sent every time to each friend every time they come online and each time the
 status message is changed.
 
-USERSTATUS:
+## `USERSTATUS`
+
 length: 2 bytes
-[uint8_t (50)][uint8_t status (0 = online, 1 = away, 2 = busy)]
+
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x32)
+  1       | uint8_t status (0 = online, 1 = away, 2 = busy)
 
 Used to send the user status of the peer to others. This packet should be sent
 every time to each friend every time they come online and each time the user
 status is changed.
 
-TYPING:
+## `TYPING`
+
 length: 2 bytes
-[uint8_t (51)][uint8_t typing status (0 = not typing, 1 = typing)]
+
+Length    | Contents
+--------- | --------
+  1       | 0x33
+  1       | uint8_t typing status (0 = not typing, 1 = typing)
 
 Used to tell a friend whether the user is currently typing or not.
 
-MESSAGE:
-[uint8_t (64)][Message as a UTF8 byte string (Min length: 0 bytes, Max length: 1372 bytes)]
+## `MESSAGE`
+
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x40)
+[0, 1372] | Message as a UTF8 byte string
 
 Used to send a normal text message to the friend.
 
-ACTION:
-[uint8_t (65)][Action message as a UTF8 byte string (Min length: 0 bytes, Max length: 1372 bytes)]
+## `ACTION`
+
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x41)
+[0, 1372] | Action message as a UTF8 byte string
+
 
 Used to send an action message (like an IRC action) to the friend.
 
-MSI:
-[uint8_t (69)][data]
+## `MSI`
+
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x45)
+  ?       | data
 
 Reserved for Tox AV usage.
 
-File Transfer Related Packets:
-FILE_SENDREQUEST:
-[uint8_t (80)][uint8_t file number][uint32_t file type][uint64_t file size][file id (32 bytes)][filename as a UTF8 byte string (Min length: 0 bytes, Max length: 255 bytes)]
+## File Transfer Related Packets:
+
+### `FILE_SENDREQUEST`:
+
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x50)
+  1       | uint8_t file number
+  4       | uint32_t file type
+  8       | uint64_t file size
+  32      | file id (32 bytes)
+[0, 255]  | filename as a UTF8 byte string
 
 Note that file type and file size are sent in big endian/network byte format.
 
-FILE_CONTROL:
+### `FILE_CONTROL`
+
 length: 4 bytes if control_type isn't seek. 8 bytes if control_type is seek.
-[uint8_t (81)][uint8_t send_receive (0 if the control targets a file being sent (by the peer sending the file control), 1 if it targets a file being received)][uint8_t file number][uint8_t control_type (0 = accept, 1 = pause, 2 = kill, 3 = seek)][uint64_t seek parameter (only included when control_type is seek)]
+
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x51)
+  1       | uint8_t send_receive (0 if the control targets a file being sent (by the peer sending the file control), 1 if it targets a file being received)
+  1       | uint8_t file number
+  1       | uint8_t control_type (0 = accept, 1 = pause, 2 = kill, 3 = seek)
+  8       | uint64_t seek parameter (only included when control_type is seek)
 
 Note that if it is included the seek parameter will be sent in big
 endian/network byte format.
 
-FILE_DATA:
+### `FILE_DATA`
+
 length: 2 to 1373 bytes.
 
-[uint8_t (82)][uint8_t file number][file data piece (Min length: 0 bytes, Max length: 1371 bytes)]
-
-
-Group Chat Related Packets:
-INVITE_GROUPCHAT 96
-ONLINE_PACKET 97
-DIRECT_GROUPCHAT 98
-MESSAGE_GROUPCHAT 99
-LOSSY_GROUPCHAT 199
-
+Length    | Contents
+--------- | --------
+  1       | uint8_t (0x52)
+  1       | uint8_t file number
+[0, 1371] | file data piece
 
 Files are transferred in Tox using File transfers.
 
-To initiate a file transfer, the friend creates and sends a FILE_SENDREQUEST
+To initiate a file transfer, the friend creates and sends a `FILE_SENDREQUEST`
 packet to the friend it wants to initiate a file transfer to.
 
-The first part of the FILE_SENDREQUEST packet is the file number. The file
+The first part of the `FILE_SENDREQUEST` packet is the file number. The file
 number is the number used to identify this file transfer. As the file number is
 represented by a 1 byte number, the maximum amount of concurrent files Tox can
 send to a friend is 256. 256 file transfers per friend is enough that clients
@@ -625,8 +690,8 @@ As file numbers are used to identify the file transfer, the Tox instance must
 make sure to use a file number that isn't used for another outgoing file
 transfer to that same friend when creating a new outgoing file transfer. File
 numbers are chosen by the file sender and stay unchanged for the entire
-duration of the file transfer. The file number is used by both FILE_CONTROL and
-FILE_DATA packets to identify which file transfer these packets are for.
+duration of the file transfer. The file number is used by both `FILE_CONTROL` and
+`FILE_DATA` packets to identify which file transfer these packets are for.
 
 The second part of the file transfer request is the file type. This is simply a
 number that identifies the type of file. for example, tox.h defines the file
@@ -637,9 +702,9 @@ by the Tox client that creates the file transfers and send to the friend
 untouched.
 
 The file size indicates the total size of the file that will be transfered. A
-file size of UINT64_MAX (maximum value in a uint64_t) means that the size of
+file size of `UINT64_MAX` (maximum value in a uint64_t) means that the size of
 the file is undetermined or unknown. For example if someone wanted to use Tox
-file transfers to stream data they would set the file size to UINT64_MAX. A
+file transfers to stream data they would set the file size to `UINT64_MAX`. A
 file size of 0 is valid and behaves exactly like a normal file transfer.
 
 The file id is 32 bytes that can be used to uniquely identify the file
@@ -653,14 +718,14 @@ only used by things above it.
 The last part of the file transfer is the optional file name which is used to
 tell the receiver the name of the file.
 
-When a FILE_SENDREQUEST packet is received, the implementation validates and
+When a `FILE_SENDREQUEST` packet is received, the implementation validates and
 sends the info to the Tox client which decides whether they should accept the
 file transfer or not.
 
-To refuse or cancel a file transfer, they will send a FILE_CONTROL packet with
+To refuse or cancel a file transfer, they will send a `FILE_CONTROL` packet with
 control_type 2 (kill).
 
-FILE_CONTROL packets are used to control the file transfer. FILE_CONTROL
+`FILE_CONTROL` packets are used to control the file transfer. `FILE_CONTROL`
 packets are used to accept/unpause, pause, kill/cancel and seek file transfers.
 The control_type parameter denotes what the file control packet does.
 
@@ -672,10 +737,10 @@ file number corresponds to a file being sent by the user sending the file
 control packet. If send_receive is 1, it corresponds to a file being received
 by the user sending the file control packet.
 
-control_type indicates the purpose of the FILE_CONTROL packet. control_type of
-0 means that the FILE_CONTROL packet is used to tell the friend that the file
+`control_type` indicates the purpose of the `FILE_CONTROL` packet. `control_type` of
+0 means that the `FILE_CONTROL` packet is used to tell the friend that the file
 transfer is accepted or that we are unpausing a previously paused (by us) file
-transfer. control_type of 1 is used to tell the other to pause the file
+transfer. `control_type` of 1 is used to tell the other to pause the file
 transfer.
 
 If one party pauses a file transfer, that party must be the one to unpause it.
@@ -685,17 +750,17 @@ receiver must not be able to unpause it. To unpause a file transfer,
 control_type 0 is used. files can only be paused when they are in progress and
 have been accepted.
 
-control_type 2 is used to kill, cancel or refuse a file transfer. When a
-FILE_CONTROL is received, the targeted file transfer is considered dead, will
+`control_type` 2 is used to kill, cancel or refuse a file transfer. When a
+`FILE_CONTROL` is received, the targeted file transfer is considered dead, will
 immediately be wiped and its file number can be reused. The peer sending the
-FILE_CONTROL must also wipe the targeted file transfer from their side. This
+`FILE_CONTROL` must also wipe the targeted file transfer from their side. This
 control type can be used by both sides of the transfer at any time.
 
-control_type 3, the seek control type is used to tell the sender of the file to
+`control_type` 3, the seek control type is used to tell the sender of the file to
 start sending from a different index in the file than 0. It can only be used
-right after receiving a FILE_SENDREQUEST packet and before accepting the file
-by sending a FILE_CONTROL with control_type 0. When this control_type is used,
-an extra 8 byte number in big endian format is appended to the FILE_CONTROL
+right after receiving a `FILE_SENDREQUEST` packet and before accepting the file
+by sending a `FILE_CONTROL` with control_type 0. When this control_type is used,
+an extra 8 byte number in big endian format is appended to the `FILE_CONTROL`
 that is not present with other control types. This number indicates the index
 in bytes from the beginning of the file at which the file sender should start
 sending the file. The goal of this control type is to ensure that files can be
@@ -706,31 +771,31 @@ bigger or equal to the size of the file, the seek packet is invalid and the one
 receiving it will discard it.
 
 To accept a file Tox will therefore send a seek packet, if it is needed, and
-then send a FILE_CONTROL packet with control_type 0 (accept) to tell the file
+then send a `FILE_CONTROL` packet with control_type 0 (accept) to tell the file
 sender that the file was accepted. 
 
 Once the file transfer is accepted, the file sender will start sending file
 data in sequential chunks from the beginning of the file (or the position from
-the FILE_CONTROL seek packet if one was received).
+the `FILE_CONTROL` seek packet if one was received).
 
-File data is sent using FILE_DATA packets. The file number corresponds to the
+File data is sent using `FILE_DATA` packets. The file number corresponds to the
 file transfer that the file chunks belong to. The receiver assumes that the
 file transfer is over as soon as a chunk with the file data size not equal to
 the maximum size (1371 bytes) is received. This is how the sender tells the
 receiver that the file transfer is complete in file transfers where the size of
-the file is unknown (set to UINT64_MAX). The receiver also assumes that if the
+the file is unknown (set to `UINT64_MAX`). The receiver also assumes that if the
 amount of received data equals to the file size received in the
-FILE_SENDREQUEST, the file sending is finished and has been successfully
+`FILE_SENDREQUEST`, the file sending is finished and has been successfully
 received. Immediately after this occurs, the receiver frees up the file number
 so that a new incoming file transfer can use that file number. The
 implementation should discard any extra data received which is larger than the
 file size received at the beginning.
 
-In 0 filesize file transfers, the sender will send one FILE_DATA packet with a
+In 0 filesize file transfers, the sender will send one `FILE_DATA` packet with a
 file data size of 0.
 
 The sender will know if the receiver has received the file successfully by
-checking if the friend has received the last FILE_DATA packet sent (containing
+checking if the friend has received the last `FILE_DATA` packet sent (containing
 the last chunk of the file). Net_crypto can be used to check whether packets
 sent through it have been received by storing the packet number of the sent
 packet and verifying later in net_crypto to see whether it was received or not.
@@ -738,7 +803,7 @@ As soon as net_crypto says the other received the packet, the file transfer is
 considered successful, wiped and the file number can be reused to send new
 files.
 
-FILE_DATA packets should be sent as fast as the net_crypto connection can
+`FILE_DATA` packets should be sent as fast as the net_crypto connection can
 handle it respecting its congestion control.
 
 If the friend goes offline, all file transfers are cleared in toxcore. This
@@ -746,6 +811,16 @@ makes it simpler for toxcore as it does not have to deal with resuming file
 transfers. It also makes it simpler for clients as the method for resuming file
 transfers remains the same, even if the client is restarted or toxcore loses
 the connection to the friend because of a bad internet connection.
+
+## Group Chat Related Packets
+
+Packet ID | Packet Name
+--------- | ----------- 
+ 0x60     | `INVITE_GROUPCHAT`
+ 0x61     | `ONLINE_PACKET`
+ 0x62     | `DIRECT_GROUPCHAT`
+ 0x63     | `MESSAGE_GROUPCHAT`
+ 0xC7     | `LOSSY_GROUPCHAT`
 
 Messenger also takes care of saving the friends list and other friend
 information so that it's possible to close and start toxcore while keeping all
