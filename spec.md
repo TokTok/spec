@@ -58,10 +58,10 @@ the nonces were generated using rand for example, it might lead to tying DHT
 and onion announce packets together which would introduce a flaw in the system
 as non friends could tie some peoples DHT and long term keys together.
 
-# DHT.txt
+# DHT
 
 The DHT is a self-organizing swarm of all peers in the Tox network. This module
-takes care of finding the ip & port of peers and establishing a route to them
+takes care of finding the IP & port of peers and establishing a route to them
 directly via UDP using hole punching if necessary. The DHT only runs on UDP and
 so is only used if UDP works.
 
@@ -90,10 +90,11 @@ that are the closest to that peer and, if that peer is online, they will find
 them.
 
 
+
+## DHT Packet
 The DHT wraps all of it's data inside a standard Packet type.
 
-DHT Packet:
-
+```
 +-----------------------------------+
 | Unencrypted Section:              |
 | Packet type             (1 byte ) |
@@ -106,16 +107,20 @@ DHT Packet:
 |   Public DHT key of the RECIVER]  |
 | data/payload             (varies) |
 +-----------------------------------+
+```
 
 The following packets use this format.
 
-Ping Packet (Request and response):
-Packet type 00 for request, 01 for response.
+### Ping Packet (Request and response)
+Packet type `00` for request, `01` for response.
+
+```
 +-----------------------------------+
 | Encrypted payload:                |
 | Ping type               (1 byte ) |
 | ping_id                 (8 bytes) |
 +-----------------------------------+
+```
 
 The main DHT packet types are ping requests and responses which are used to
 check if another node is alive and get node packets which are used to query
@@ -124,36 +129,43 @@ requested node.
 
 The first byte of a ping request is a 0, followed by the DHT public key of the
 sender and the nonce. The encrypted payload contains a byte with a value of 00
-for a ping request, and 01 for a ping reply, followed by a 8 byte ping_id which
-must be the same in the request and reply.
+for a ping request, and 01 for a ping reply, followed by a 8 bytes of `ping_id`
+which must be the same in the request and reply.
 
 The reason for the 1 byte value in the encrypted part is because the key used
 to encrypt both the request and response will be the same, due to how the
 encryption works this prevents a possible attacker from being able to create a
 ping response without needing to decrypt the ping request.
 
-The ping_id is used to make sure that the response received later is a response
-for this ping and not a replayed response from a previous ping, (without a
-ping_id an attacker would be able to make the sender believe that the node they
-are pinging is still up by just sending a generic ping response packet without
-investing decryption time/cycles.) Requiring the ping_id also requires the ping
-reply to follow a ping request.
+The `ping_id` is used to make sure that the response received later is a
+response for this ping and not a replayed response from a previous ping,
+(without a `ping_id` an attacker would be able to make the sender believe that
+the node they are pinging is still up by just sending a generic ping response
+packet without investing decryption time/cycles.) Requiring the `ping_id` also
+requires the ping reply to follow a ping request.
 
 The ping response follows the standard DHT packet. For a ping reply, the packet
 type is 01. The encrypted payload contains a single byte with a value of 01,
-followed by the 8 byte ping_id that was sent in the ping request. All ping
+followed by the 8 byte `ping_id` that was sent in the ping request. All ping
 requests received will be decrypted. If successfully decrypted a reply will be
 created and sent.
 
 
-Get Nodes (Request)   Packet type 02:
+### Get / Send Nodes Packet (Request and response)
+
+Get Nodes (Request) – packet type `02`:
+
+```
 +-----------------------------------+
 | Encrypted payload:                |
 | DHT PUBKEY             (32 bytes) |
 | ping_id                ( 8 bytes) |
 +-----------------------------------+
+```
 
-Send Nodes (Response) Packet type 04:
+Send Nodes (Response) – packet type `04`:
+
+```
 +-----------------------------------+
 | Encrypted payload:                |
 | Number of packed nodes ( 1 byte ) |
@@ -162,25 +174,28 @@ Send Nodes (Response) Packet type 04:
 |      (41 bytes for IPv6) * number |
 | ping_id                ( 8 bytes) |
 +-----------------------------------+
+```
 
 Get Nodes and Send Nodes both follow use the DHT packet with the first byte of
 a get nodes request value of 02, and send nodes response value of 04.
 
 The encrypted payload of the request is the DHT public key that the sender is
 searching for, or wants to find the nodes in the DHT closest to it. This is
-followed by an 8 byte ping id which is there for the same reason as the one for
-the ping request.
+followed by an 8 byte `ping_id` which is there for the same reason as the one
+for the ping request.
 
 The encrypted payload of the response starts with the number of nodes in the
 response, followed by that number of nodes in a packed node format, (max of 4
 nodes). Send node responses should contain the 4 closest good (not timed out)
-nodes that the node has in their list of known nodes. Finally the same ping_id
-received in the request.
+nodes that the node has in their list of known nodes. Finally the same
+`ping_id` received in the request.
 
+
+### Packed node format
 
 Packed node format:
 
-Packed node format:
+```
 +-----------------------------------+
 | ip_type                ( 1 byte ) | First bit is protocol, 3 bits = 0, 4th bit = address family.
 |                                   | (2 == UDP IPv4, 10 == UDP IPv6, 130 == TCP IPv4, 138 == TCP IPv6.)
@@ -190,24 +205,29 @@ Packed node format:
 | Port                   ( 2 bytes) | In network byte order.
 | Node ID                (32 bytes) |
 +-----------------------------------+
+```
 
 The DHT Send nodes uses the Packed Node Format. The packed node format is a way
 to store the node info in a small yet easy to parse format. The packed node
 format is used in many places in Tox. To store more than one node, simply
-append another one to the previous one: [packed node 1][packed node 2][...]
+append another one to the previous one: 
 
-In the Packed Node Format, ip_type numbers 2 and 10 are used to indicate an
-ipv4 or ipv6 UDP node. The number 130 is used for an ipv4 TCP relay and 138 is
-used to indicate an ipv6 TCP relay. The reason for these numbers is because the
-numbers on my Linux machine for ipv4 and ipv6 (the AF_INET and AF_INET6
-defines) were 2 and 10. The TCP numbers are just the UDP numbers + 128. The ip
-is 4 bytes for a ipv4 address (ip_type numbers 2 and 130). The ip is 16 bytes
-for an ipv6 address (ip_type numbers 10 and 138). This is followed by 32 byte
-the public key of the node.
+```
+[packed node 1][packed node 2][...]
+```
 
-Only the UDP ip_types (ip_type 2 and ip_type 10) are used in the DHT module
-when sending nodes with the packed node format. This is because the TCP
-ip_types are used to send TCP relay information and the DHT is UDP only.
+In the Packed Node Format, `ip_type` numbers `2` and `10` are used to indicate
+an IPv4 or IPv6 UDP node. The number `130` is used for an `IPv4 TCP relay` and
+`138` is used to indicate an `IPv6 TCP relay`. The reason for these numbers is
+because the numbers on my Linux machine for IPv4 and IPv6 (the `AF_INET` and
+`AF_INET6` defines) were `2` and `10`. The TCP numbers are just the UDP numbers
+`+ 128`. The IP is 4 bytes for an IPv4 address (`ip_type` numbers `2` and
+`130`). The IP is 16 bytes for an IPv6 address (`ip_type` numbers `10` and
+`138`). This is followed by 32 bytes of the public key of the node.
+
+Only the UDP `ip_types` (`ip_type 2` and `ip_type 10`) are used in the DHT
+module when sending nodes with the packed node format. This is because the TCP
+`ip_types` are used to send TCP relay information and the DHT is UDP only.
 
 For its close list toxcore calculates the index of the first bit in the given
 public key that does not match its DHT public key. If the first or most
@@ -230,7 +250,7 @@ every 20 seconds, with the search public key being its public key for the
 closest node and the public key being searched for being the ones in the DHT
 friends list. Nodes are removed after 122 seconds of no response. Nodes are
 added to the lists after a valid ping response or send node packet is received
-from them. If the node is already present in the list it is updated if the ip
+from them. If the node is already present in the list it is updated if the IP
 address changed. A node can only be added to a list if the list is not full or
 if the nodes DHT public key is closer than the DHT public key of at least one
 of the nodes in the list to the public key being searched with that list. When
@@ -270,8 +290,15 @@ alone and are probably not the best values. This also applies to the behavior
 which is simple and should be improved in order to make the network resist
 better to sybil attacks.
 
-DHT Request packets:
-[char with a value of 32][The reciever's DHT Public key (32 bytes))][The sender's DHT Public key (32 bytes)][Random nonce (24 bytes)][Encrypted message]
+### DHT Request packets
+
+Length  | Contents
+--------|---------
+1       | uint8_t (0x20)
+32      | receiver's DHT public key
+32      | sender's DHT public key
+24      | nonce
+?       | encrypted message
 
 DHT Request packets are packets that can be sent across one DHT node to one
 that they know. They are used to send encrypted data to friends that we are not
@@ -290,37 +317,54 @@ sender's DHT private key and the nonce (randomly generated 24 bytes).
 DHT request packets are used for DHTPK packets (see onion) and NAT ping
 packets.
 
-NAT ping packets (This sits inside the DHT request packet):
-[uint8_t with a value of 254][char with 0][8 byte random number]
-[uint8_t with a value of 254][char with 1][8 byte random number (The same that was sent in the request)]
+### NAT ping packets
+Sits inside the DHT request packet.
 
 NAT ping packets are used to see if a friend we are not connected to directly
 is online and ready to do the hole punching.
 
-Hole punching:
+
+#### NAT ping request
+
+Length  | Contents
+--------|---------
+1       | uint8_t (0xfe)
+1       | uint8_t (0x00)
+8       | uint64_t random number
+
+#### NAT ping response
+
+Length  | Contents
+--------|---------
+1       | uint8_t (0xfe)
+1       | uint8_t (0x01)
+8       | uint64_t random number (the same that was received in request)
+
+
+## Hole punching
 
 For holepunching we assume that people using Tox are on one of 3 types of NAT:
 
 Cone NATs: Assign one whole port to each UDP socket behind the NAT, any packet
-from any ip/port sent to that assigned port from the internet will be forwarded
+from any IP/port sent to that assigned port from the internet will be forwarded
 to the socket behind it.
 
 Restricted Cone NATs: Assign one whole port to each UDP socket behind the NAT.
-However, it will only forward packets from ips that the UDP socket has sent a
+However, it will only forward packets from IPs that the UDP socket has sent a
 packet to.
 
-Symmetric NATs: The worst kind of NAT, they assign a new port for each ip/port
+Symmetric NATs: The worst kind of NAT, they assign a new port for each IP/port
 a packet is sent to. They treat each new peer you send a UDP packet to as a
-'connection' and will only forward packets from the ip/port of that
-'connection'.
+`'connection'` and will only forward packets from the IP/port of that
+`'connection'`.
 
 
 Holepunching on normal cone NATs is achieved simply through the way in which
 the DHT functions.
 
 If more than half of the 8 peers closest to the friend in the DHT return an
-ip/port for the friend and we send a ping request to each of the returned
-ip/ports but get no response. If we have sent 4 ping requests to 4 ip/ports
+IP/port for the friend and we send a ping request to each of the returned
+IP/ports but get no response. If we have sent 4 ping requests to 4 IP/ports
 that supposedly belong to the friend and get no response, then this is enough
 for toxcore to start the hole punching. The numbers 8 and 4 are used in toxcore
 and where chosen based on feel alone and so may not be the best numbers.
@@ -347,21 +391,21 @@ ping packets sent in the hole punching being sent to a dead peer but decrease
 bandwidth usage. Decreasing the intervals will have the opposite effect.
 
 There are 2 cases that toxcore handles for the hole punching. The first case is
-if each 4+ peers returned the same ip and port. The second is if the 4+ peers
-returned same ips but different ports.
+if each 4+ peers returned the same IP and port. The second is if the 4+ peers
+returned same IPs but different ports.
 
-A third case that may occur is the peers returning different ips and ports.
+A third case that may occur is the peers returning different IPs and ports.
 This can only happen if the friend is behind a very restrictive NAT that cannot
 be hole punched or if the peer recently connected to another internet
 connection and some peers still have the old one stored. Since there is nothing
-we can do for the first option it is recommended to just use the most common ip
-returned by the peers and to ignore the other ip/ports.
+we can do for the first option it is recommended to just use the most common IP
+returned by the peers and to ignore the other IP/ports.
 
-In the case where the peers return the same ip and port it means that the other
+In the case where the peers return the same IP and port it means that the other
 friend is on a restricted cone NAT. These kind of NATs can be hole punched by
 getting the friend to send a packet to our public IP/port. This means that hole
 punching can be achieved easily and that we should just continue sending DHT
-ping packets regularly to that ip/port until we get a ping response. This will
+ping packets regularly to that IP/port until we get a ping response. This will
 work because the friend is searching for us in the DHT and will find us and
 will send us a packet to our public IP/port (or try to with the hole punching),
 thereby establishing a connection.
@@ -383,13 +427,13 @@ NATs, most likely because a lot of them restart their count at 1024.
 
 Increasing the amount of ports tried per second would make the hole punching go
 faster but might DoS NATs due to the large number of packets being sent to
-different ips in a short amount of time. Decreasing it would make the hole
+different IPs in a short amount of time. Decreasing it would make the hole
 punching slower.
 
 This works in cases where both peers have different NATs. For example, if A and
 B are trying to connect to each other: A has a symmetric NAT and B a restricted
 cone NAT. A will detect that B has a restricted cone NAT and keep sending ping
-packets to his one ip/port. B will detect that A has a symmetric NAT and will
+packets to his one IP/port. B will detect that A has a symmetric NAT and will
 send packets to it to try guessing his ports. If B manages to guess the port A
 is sending packets from they will connect together.
 
