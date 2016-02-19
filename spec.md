@@ -889,14 +889,14 @@ Messenger will add the running TCP server to the TCP relay.
 Messenger is the module that transforms code that can connect to friends based
 on public key into a real instant messenger.
 
-# TCP_client.txt
+# TCP client
 
-TCP_client is the client for the TCP server. It establishes and keeps a
+`TCP client` is the client for the TCP server. It establishes and keeps a
 connection to the TCP server open.
 
-All the packet formats are explained in detail in TCP_server so this section
-will only cover TCP_client specific details which are not covered in the
-TCP_server documentation.
+All the packet formats are explained in detail in `TCP server` so this section
+will only cover `TCP client` specific details which are not covered in the
+`TCP server` documentation.
 
 TCP clients can choose to connect to TCP servers through a proxy. Most common
 types of proxies (SOCKS, HTTP) work by establishing a connection through a
@@ -905,7 +905,7 @@ through that proxy to a TCP server is established, the socket behaves from the
 point of view of the application exactly like a TCP socket that connects
 directly to a TCP server instance. This means supporting proxies is easy.
 
-TCP_client first establishes a TCP connection, either through a proxy or
+`TCP client` first establishes a TCP connection, either through a proxy or
 directly to a TCP server. It uses the DHT public key as its long term key when
 connecting to the TCP server. 
 
@@ -922,11 +922,11 @@ Ping packets are sent by the toxcore TCP client every 30 seconds with a timeout
 of 10 seconds, the same interval and timeout as toxcore TCP server ping
 packets. They are the same because they accomplish the same thing.
 
-TCP_client must have a mechanism to make sure important packets (routing
+`TCP client` must have a mechanism to make sure important packets (routing
 requests, disconnection notifications, ping packets, ping response packets)
 don't get dropped because the TCP socket is full. Should this happen, the TCP
 client must save these packets and prioritize sending them, in order, when the
-TCP socket on the server becomes available for writing again. TCP_client must
+TCP socket on the server becomes available for writing again. `TCP client` must
 also take into account that packets might be bigger than the number of bytes it
 can currently write to the socket. In this case, it must save the bytes of the
 packet that it didn't write to the socket and write them to the socket as soon
@@ -935,22 +935,22 @@ assume that it may receive only part of an encrypted packet. If this occurs it
 must save the part of the packet it has received and wait for the rest of the
 packet to arrive before handling it.
 
-TCP_client can be used to open up a route to friends who are connected to the
+`TCP client` can be used to open up a route to friends who are connected to the
 TCP server. This is done by sending a routing request to the TCP server with
 the DHT public key of the friend. This tells the server to register a
-connection_id to the DHT public key sent in the packet. The server will then
+`connection_id` to the DHT public key sent in the packet. The server will then
 respond with a routing response packet. If the connection was accepted, the
-TCP_client will store the connection id for this connection. The TCP_client
-will make sure that routing response packets are responses to a routing packet
-that it sent by storing that it sent a routing packet to that public key and
-checking the response against it. This prevents the possibility of a bad TCP
-server exploiting the client.
+`TCP client` will store the `connection id` for this connection. The
+`TCP client` will make sure that routing response packets are responses to a
+routing packet that it sent by storing that it sent a routing packet to that
+public key and checking the response against it. This prevents the possibility
+of a bad TCP server exploiting the client.
 
-The TCP_client will handle connection notifications and disconnection
+The `TCP client` will handle connection notifications and disconnection
 notifications by alerting the module using it that the connection to the peer
 is up or down.
 
-TCP_client will send a disconnection notification to kill a connection to a
+`TCP client` will send a disconnection notification to kill a connection to a
 friend. It must send a disconnection notification packet regardless of whether
 the peer was online or offline so that the TCP server will unregister the
 connection.
