@@ -1,11 +1,11 @@
-# crypto_core.txt
+# Crypto
 
 Crypto core contains all the crypto related functions used by toxcore that
 relate to random numbers, encryption and decryption, key generation, nonces and
 random nonces. Not all crypto library functions are wrapped, only those that
 needed to be are. For example the NaCl functions that require a zero byte
 buffer before the data. You'll see functions that are provided by the crypto
-library used in the toxcore code, not just crypto_core functions.
+library used in the toxcore code, not just `crypto_core` functions.
 
 The create and handle request functions are the encrypt and decrypt functions
 for a type of DHT packets used to send data directly to other DHT peers. To be
@@ -18,12 +18,12 @@ functions.
 TODO: put this in the intro.
 
 All public keys in toxcore are 32 bytes and are generated with the
-crypto_box_keypair() function of the NaCl crypto library.
+`crypto_box_keypair()` function of the NaCl crypto library.
 
-The crypto_box*() functions of the NaCl crypto library are used to encrypt and
+The `crypto_box*()` functions of the NaCl crypto library are used to encrypt and
 decrypt all packets.
 
-As explained in the NaCl documentation, crypto_box is public key cryptography
+As explained in the NaCl documentation, `crypto_box` is public key cryptography
 that uses Curve25519 to generate a shared encryption key by using the
 Curve25519 public key of the one that will be receiving the packet and the
 Curve25519 private key of the one sending the packet. When the receiver
@@ -47,7 +47,7 @@ possible.
 Once the shared key is generated, the encryption is done using xsalsa20 and
 authenticated with poly1305. This is authenticated symmetric cryptography.
 
-nonces used for crypto_box are 24 bytes.
+Nonces used for `crypto_box` are 24 bytes.
 
 The random nonce generation function is used everywhere in toxcore to generate
 nonces. It uses the cryptographically secure random number generator in toxcore
