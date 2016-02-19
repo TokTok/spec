@@ -171,7 +171,7 @@ Send Nodes (Response) – packet type `04`:
 | Number of packed nodes ( 1 byte ) |
 | Nodes in packed format (max of 4) |
 |      (39 bytes for IPv4) * number |
-|      (41 bytes for IPv6) * number |
+|      (51 bytes for IPv6) * number |
 | ping_id                ( 8 bytes) |
 +-----------------------------------+
 ```
