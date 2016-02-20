@@ -1,3 +1,5 @@
+% The Tox Reference
+
 # Crypto
 
 Crypto core contains all the crypto related functions used by toxcore that
@@ -62,8 +64,8 @@ as non friends could tie some peoples DHT and long term keys together.
 
 The DHT is a self-organizing swarm of all peers in the Tox network. This module
 takes care of finding the IP & port of peers and establishing a route to them
-directly via UDP using hole punching if necessary. The DHT only runs on UDP and
-so is only used if UDP works.
+directly via UDP using [hole punching](#hole-punching) if necessary. The DHT
+only runs on UDP and so is only used if UDP works.
 
 Every peer in the Tox DHT has a temporary public key. This DHT public key acts
 as its address. This address is temporary and is renewed every time the tox
@@ -74,9 +76,9 @@ to find them and connect directly to them via UDP.
 DHT closeness is defined by a distance function, defined as the XOR between the
 2 DHT public keys, both are treated as unsigned 32 byte numbers in big endian
 format. A DHT peer with public key 1 would be closer to one with public key 0
-than one with public key 5 for example because: 1 XOR 0 = 1 and 1 XOR 5 = 4.
-The smaller this distance, the closer the peers are said to be. Since 1 is
-smaller it means 1 is closer to 0 than to 5.
+than one with public key 5 for example because: `1 XOR 0 = 1` and `1 XOR 5 =
+4`. The smaller this distance, the closer the peers are said to be.
+Since 1 is smaller it means 1 is closer to 0 than to 5.
 
 Self-organizing in the DHT occurs through each DHT peer connecting to an
 arbitrary number of peers closest to their own DHT public key and some that are
@@ -94,7 +96,7 @@ them.
 ## DHT Packet
 The DHT wraps all of it's data inside a standard Packet type.
 
-```
+```text
 +-----------------------------------+
 | Unencrypted Section:              |
 | Packet type             (1 byte ) |
@@ -114,7 +116,7 @@ The following packets use this format.
 ### Ping Packet (Request and response)
 Packet type `00` for request, `01` for response.
 
-```
+```text
 +-----------------------------------+
 | Encrypted payload:                |
 | Ping type               (1 byte ) |
@@ -155,7 +157,7 @@ created and sent.
 
 Get Nodes (Request) – packet type `02`:
 
-```
+```text
 +-----------------------------------+
 | Encrypted payload:                |
 | DHT PUBKEY             (32 bytes) |
@@ -165,7 +167,7 @@ Get Nodes (Request) – packet type `02`:
 
 Send Nodes (Response) – packet type `04`:
 
-```
+```text
 +-----------------------------------+
 | Encrypted payload:                |
 | Number of packed nodes ( 1 byte ) |
@@ -195,7 +197,7 @@ nodes that the node has in their list of known nodes. Finally the same
 
 Packed node format:
 
-```
+```text
 +-----------------------------------+
 | ip_type                ( 1 byte ) | First bit is protocol, 3 bits = 0, 4th bit = address family.
 |                                   | (2 == UDP IPv4, 10 == UDP IPv6, 130 == TCP IPv4, 138 == TCP IPv6.)
