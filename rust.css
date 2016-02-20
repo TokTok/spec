@@ -139,9 +139,9 @@ h6 {
 }
 
 nav {
-    /*column-count: 2;
-    -moz-column-count: 2;
-    -webkit-column-count: 2;*/
+    column-count: auto;
+    -moz-column-count: auto;
+    -webkit-column-count: auto;
     font-size: 15px;
     margin: 0 0 1em 0;
 }
@@ -291,19 +291,19 @@ dl {
 dd {
     margin-left: 0;
 }
-/*
+
 nav ul {
+    display: block;
     list-style-type: none;
     margin: 0;
-    padding-left: 0px;
+    padding-left: 2em;
 }
 
 /* Only display one level of hierarchy in the TOC */
-/*
+
 nav ul ul {
-    display: none;
+    display: block;
 }
-*/
 
 sub,
 sup {
