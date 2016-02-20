@@ -78,6 +78,7 @@ h1, h2, h3, h4, h5, h6, nav, #versioninfo {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 h1, h2, h3, h4, h5, h6 {
+    counter-reset: paragraph; // to reset paragraph counter on every header
     color: black;
     font-weight: 400;
     line-height: 1.1;
@@ -136,6 +137,16 @@ h6 {
     h3 {
         font-size: 26px;
     }
+}
+
+/* Number paragraphs */
+p:before {
+    align: left;
+    position: absolute;
+    margin-left: -29px;
+    color: #CCC;
+    content: counter(paragraph);
+    counter-increment: paragraph;
 }
 
 nav {
@@ -322,6 +333,7 @@ hr {
 table {
     border-collapse: collapse;
     border-spacing: 0;
+    margin-bottom: 6px;
     overflow-x: auto;
     display: block;
 }
