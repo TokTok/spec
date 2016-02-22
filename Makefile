@@ -3,5 +3,5 @@
 spec.html: spec.md
 	rustdoc --markdown-css rust.css --output ./ spec.md
 
-check: spec.md .md-style.rb
-	mdl -w -s .md-style.rb spec.md
+check: spec.md
+	mdl -w spec.md
