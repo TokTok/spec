@@ -182,13 +182,12 @@ nodes that the node has in their list of known nodes. Finally the same
 
 The packed node format contains protocol, address family, IP address, port, and
 public key of a node. This is sufficient information to start communicating with
-that node. As everywhere else in the protocol, all values are encoded in Big
-Endian, except for the protocol part, which is a 4 bit Little Endian number.
+that node.
 
 Length      | Contents
 ----------- | --------
-`0.5` LE    | Protocol (UDP = 0, TCP = 1)
-`0.5`       | Address family (2 = IPv4, 10 = IPv6)
+`1` bit     | Protocol (UDP = 0, TCP = 1)
+`7` bit     | Address family (2 = IPv4, 10 = IPv6)
 `4 | 16`    | IP address (4 bytes if Address family == IPv4, 16 bytes if IPv6)
 `2`         | Port
 `32`        | Public key (Node ID)
@@ -198,7 +197,8 @@ to store the node info in a small yet easy to parse format. The packed node
 format is used in many places in Tox. To store more than one node, simply
 append another one to the previous one: `[packed node 1][packed node 2][...]`.
 
-In the Packed Node Format, `ip_type` numbers `2` and `10` are used to indicate
+In the Packed Node Format, `ip_type` is the first byte (high bit protocol, lower
+7 bits address family). `ip_type` numbers `2` and `10` are used to indicate
 an IPv4 or IPv6 UDP node. The number `130` is used for an `IPv4 TCP relay` and
 `138` is used to indicate an `IPv6 TCP relay`. The reason for these numbers is
 because the numbers on my Linux machine for IPv4 and IPv6 (the `AF_INET` and
