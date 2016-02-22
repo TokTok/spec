@@ -1,0 +1,8 @@
+language: ruby
+
+install:
+  - gem install mdl
+
+script:
+  - make
+  - make check

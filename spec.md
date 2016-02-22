@@ -89,9 +89,8 @@ public keys closest to X.  Eventually the peer will find the peers in the DHT
 that are the closest to that peer and, if that peer is online, they will find
 them.
 
-
-
 ## DHT Packet
+
 The DHT wraps all of it's data inside a standard Packet type.
 
 ```text
@@ -112,6 +111,7 @@ The DHT wraps all of it's data inside a standard Packet type.
 The following packets use this format.
 
 ### Ping Packet (Request and response)
+
 Packet type `00` for request, `01` for response.
 
 ```text
@@ -149,7 +149,6 @@ type is 01. The encrypted payload contains a single byte with a value of 01,
 followed by the 8 byte `ping_id` that was sent in the ping request. All ping
 requests received will be decrypted. If successfully decrypted a reply will be
 created and sent.
-
 
 ### Get / Send Nodes Packet (Request and response)
 
@@ -190,7 +189,6 @@ nodes). Send node responses should contain the 4 closest good (not timed out)
 nodes that the node has in their list of known nodes. Finally the same
 `ping_id` received in the request.
 
-
 ### Packed node format
 
 Packed node format:
@@ -210,9 +208,9 @@ Packed node format:
 The DHT Send nodes uses the Packed Node Format. The packed node format is a way
 to store the node info in a small yet easy to parse format. The packed node
 format is used in many places in Tox. To store more than one node, simply
-append another one to the previous one: 
+append another one to the previous one:
 
-```
+```text
 [packed node 1][packed node 2][...]
 ```
 
@@ -318,11 +316,11 @@ DHT request packets are used for DHTPK packets (see onion) and NAT ping
 packets.
 
 ### NAT ping packets
+
 Sits inside the DHT request packet.
 
 NAT ping packets are used to see if a friend we are not connected to directly
 is online and ready to do the hole punching.
-
 
 #### NAT ping request
 
@@ -340,7 +338,6 @@ Length  | Contents
 1       | uint8_t (0x01)
 8       | uint64_t random number (the same that was received in request)
 
-
 ## Hole punching
 
 For holepunching we assume that people using Tox are on one of 3 types of NAT:
@@ -357,7 +354,6 @@ Symmetric NATs: The worst kind of NAT, they assign a new port for each IP/port
 a packet is sent to. They treat each new peer you send a UDP packet to as a
 `'connection'` and will only forward packets from the IP/port of that
 `'connection'`.
-
 
 Holepunching on normal cone NATs is achieved simply through the way in which
 the DHT functions.
@@ -663,7 +659,6 @@ Length    | Contents
   1       | uint8_t (0x41)
 [0, 1372] | Action message as a UTF8 byte string
 
-
 Used to send an action message (like an IRC action) to the friend.
 
 ## `MSI`
@@ -675,9 +670,9 @@ Length    | Contents
 
 Reserved for Tox AV usage.
 
-## File Transfer Related Packets:
+## File Transfer Related Packets
 
-### `FILE_SENDREQUEST`:
+### `FILE_SENDREQUEST`
 
 Length    | Contents
 --------- | --------
@@ -816,7 +811,7 @@ receiving it will discard it.
 
 To accept a file Tox will therefore send a seek packet, if it is needed, and
 then send a `FILE_CONTROL` packet with control_type 0 (accept) to tell the file
-sender that the file was accepted. 
+sender that the file was accepted.
 
 Once the file transfer is accepted, the file sender will start sending file
 data in sequential chunks from the beginning of the file (or the position from
@@ -859,7 +854,7 @@ the connection to the friend because of a bad internet connection.
 ## Group Chat Related Packets
 
 Packet ID | Packet Name
---------- | ----------- 
+--------- | -----------
  0x60     | `INVITE_GROUPCHAT`
  0x61     | `ONLINE_PACKET`
  0x62     | `DIRECT_GROUPCHAT`
@@ -869,7 +864,7 @@ Packet ID | Packet Name
 Messenger also takes care of saving the friends list and other friend
 information so that it's possible to close and start toxcore while keeping all
 your friends, your long term key and the information necessary to reconnect to
-the network. 
+the network.
 
 Important information messenger stores includes: the long term private key, our
 current nospam value, our friends' public keys and any friend requests the user
@@ -907,7 +902,7 @@ directly to a TCP server instance. This means supporting proxies is easy.
 
 `TCP client` first establishes a TCP connection, either through a proxy or
 directly to a TCP server. It uses the DHT public key as its long term key when
-connecting to the TCP server. 
+connecting to the TCP server.
 
 It establishes a secure connection to the TCP server. After establishing a
 connection to the TCP server, and when the handshake response has been received
@@ -1122,7 +1117,6 @@ of data or handshake packet to the server:
 
 [DHT public key of client (32 bytes)][nonce for the encrypted data [24 bytes]][encrypted with the DHT private key of the client and public key of the server and the nonce:[public key (32 bytes)][base nonce the TCP client wants the TCP server to use to encrypt the packets sent to the TCP client (24 bytes)]]
 
-
 The first 32 bytes are the public key (DHT public key) that the TCP client is
 announcing itself to the server with. The next 24 bytes are a nonce which the
 TCP client uses along with the secret key associated with the public key in the
@@ -1181,7 +1175,6 @@ because this means that the client previously timed out and is reconnecting.
 Because of Toxcore design it is very unlikely to happen that two legitimate
 different peers will have the same public key so this is the correct behavior.
 
-
 Encrypted data packets look like this to outsiders:
 [[uint16_t (length of data)][encrypted data]]
 
@@ -1226,38 +1219,41 @@ the data length and the 2048 bytes the max size of the encrypted part. This
 means the maximum size is 2050 bytes. In current toxcore, the largest encrypted
 data packets sent will be of size 2 + 1417 which is 1419 total.
 
-
 The logic behind the format of the handshake is that we:
+
 1. need to prove to the server that we own the private key related to the public key we are announcing ourselves with.
-2. need to establish a secure connection that has perfect forward secrecy
-3. prevent any replay, impersonation or other attacks
+1. need to establish a secure connection that has perfect forward secrecy
+1. prevent any replay, impersonation or other attacks
 
 How it accomplishes each of those points:
+
 1. If the client does not own the private key related to the public key they will not be able to create the handshake packet.
-2. temporary session keys generated by the client and server in the encrypted part of the handshake packets are used to encrypt/decrypt packets during the session.
-3. a. Attacker modifies any byte of the handshake packets: Decryption fail, no attacks possible
+1. temporary session keys generated by the client and server in the encrypted part of the handshake packets are used to encrypt/decrypt packets during the session.
+1. a. Attacker modifies any byte of the handshake packets: Decryption fail, no attacks possible
    b. Attacker captures the handshake packet from the client and replays it later to the server: Attacker will never get the server to confirm the connection (no effect)
    c. Attacker captures a server response and sends it to the client next time they try to connect to the server: Client will never confirm the connection. (See: TCP_client)
    d. Attacker tries to impersonate a server: They won't be able to decrypt the handshake and won't be able to respond.
    e. Attacker tries to impersonate a client: Server won't be able to decrypt the handshake.
 
 The logic behind the format of the encrypted packets is that:
+
 1. TCP is a stream protocol, we need packets.
-2. Any attacks must be prevented
+1. Any attacks must be prevented
 
 How it accomplishes each of those points:
+
 1. 2 bytes before each packet of encrypted data denote the length. We assume a functioning TCP will deliver bytes in order which makes it work. If the TCP doesn't it most likely means it is under attack and for that see the next point.
-2. a. Modifying the length bytes will either make the connection time out and/or decryption fail.
+1. a. Modifying the length bytes will either make the connection time out and/or decryption fail.
    b. Modifying any encrypted bytes will make decryption fail.
    c. Injecting any bytes will make decryption fail.
    d. Trying to re order the packets will make decryption fail because of the ordered nonce.
    c. Removing any packets from the stream will make decryption fail because of the ordered nonce.
 
-
 The folowing represents the various types of data that can be sent inside
 encrypted data packets.
 //TODO: nice graphics
 
+```text
 0 - Routing request.
 [uint8_t id (0)][public key (32 bytes)]
 1 - Routing request response.
@@ -1278,6 +1274,7 @@ encrypted data packets.
 9 - onion packet response (same format as onion packet with id 142 but id is 9 instead.)
 16 and up - Data
 [uint8_t connection_id][data]
+```
 
 The TCP server is set up in a way to minimize waste while relaying the many
 packets that might go between two tox peers hence clients must create
@@ -1366,7 +1363,7 @@ the client and some only by the server? It's less confusing.
 # friend_connection.txt
 
 friend_connection is the module that sits on top of the DHT, onion and
-net_crypto modules and takes care of linking the 3 together. 
+net_crypto modules and takes care of linking the 3 together.
 
 Friends in friend_connection are represented by their real public key. When a
 friend is added in friend_connection, an onion search entry is created for that
@@ -1426,7 +1423,7 @@ who receives the packet will associate the sent relays to the net_crypto
 connection they received it from. When both sides do this they will be able to
 connect to each other using the relays. The packet id or first byte of the
 packet of share relay packets is 17. This is then followed by some TCP relays
-stored in packed node format. 
+stored in packed node format.
 
 [uint8_t packet id (17)][TCP relays in packed node format (see DHT)]
 
@@ -1675,7 +1672,7 @@ Peer leave packet:
 [uint8_t id 98][uint16_t group number][uint8_t id 1]
 
 For a groupchat connection to work, both peers in the groupchat must be
-attempting to connect directly to each other. 
+attempting to connect directly to each other.
 
 Groupchat connections are established when both peers who want to connect to
 each other either create a new friend connection to connect to each other or
@@ -1688,17 +1685,17 @@ want to establish the groupchat connection with them and tell them the
 groupchat number of our groupchat instance. The peer online packet contains the
 group number and the group type and 32 byte groupchat id. The group number is
 the group number the peer has for the group with the group id sent in the
-packet. 
+packet.
 
 When both sides send a online packet to the other peer, a connection is
-established. 
+established.
 
 When an online packet is received, the group number to communicate with the
 group is saved. If the connection to the peer is already established (an online
 packet has been already received) then the packet is dropped. If there is no
 group connection to that peer being established, the packet is dropped. If this
 is the first group connection to that group we establish, a peer query packet
-is sent. This is so we can get the list of peers from the group. 
+is sent. This is so we can get the list of peers from the group.
 
 The peer leave packet is sent to the peer right before killing a group
 connection. It is only used to tell the other side that the connection is dead
@@ -1711,7 +1708,7 @@ Peer query packet:
 [uint8_t id 98][uint16_t group number][uint8_t id 8]
 
 Peer response packet:
-[uint8_t id 98][uint16_t group number][uint8_t id 9][Repeated times number of peers: [uint16_t peer num][uint8_t 32bytes real public key][uint8_t 32bytes temp DHT public key][uint8_t name length][name]] 
+[uint8_t id 98][uint16_t group number][uint8_t id 9][Repeated times number of peers: [uint16_t peer num][uint8_t 32bytes real public key][uint8_t 32bytes temp DHT public key][uint8_t name length][name]]
 
 Title response packet:
 [uint8_t id 98][uint16_t group number][uint8_t id 10][title]
@@ -1786,7 +1783,7 @@ Tell everyone about a new peer in the chat.
 [uint8_t message[messagelen]]
 
 Ping messages must be sent every 60 seconds by every peer. This is how other
-peers know that the peers are still alive. 
+peers know that the peers are still alive.
 
 When a new peer joins, the peer which invited the joining peer will send a new
 peer message to warn everyone that there is a new peer in the chat. When a new
@@ -1798,7 +1795,7 @@ is sent by the one quitting the group chat right before they quit it.
 
 name change messages are used to change or set the name of the peer sending it.
 They are also sent by a joining peer right after receiving the list of peers in
-order to tell others what their name is. 
+order to tell others what their name is.
 
 title change packets are used to change the title of the group chat and can be
 sent by anyone in the group chat.
@@ -1806,10 +1803,9 @@ sent by anyone in the group chat.
 Chat and action messages are used by the group chat peers to send messages to
 others in the group chat.
 
-
 Lossy message packets are used to send audio packets to others in audio group
 chats. Lossy packets work the same way as normal relayed groupchat messages in
-that they are relayed to everyone in the group chat until everyone has them. 
+that they are relayed to everyone in the group chat until everyone has them.
 
 Some differences with them though is that first of all the message number is a
 2 byte integer. If I were to improve the groupchats protocol I would make the
@@ -1870,7 +1866,7 @@ are encrypted. This prevents a malicious TCP relay from disrupting the
 connection by modifying the packets that go through it. The packet loss
 prevention makes it work very well on TCP relays that we assume may go down at
 any time as the connection will stay strong even if there is need to switch to
-another TCP relay which will cause some packet loss. 
+another TCP relay which will cause some packet loss.
 
 Before sending the actual handshake packet the peer must obtain a cookie. This
 cookie step serves as a way for the receiving peer to confirm that the peer
@@ -1945,7 +1941,7 @@ The packet id for cookie request packets is 25. The response contains a nonce
 and an encrypted part encrypted with the nonce. The encrypted part is encrypted
 with the same key used to decrypt the encrypted part of the request meaning the
 expensive shared key generation needs to be called only once in order to handle
-and respond to a cookie request packet with a cookie response. 
+and respond to a cookie request packet with a cookie response.
 
 The Cookie (see below) and the echo id that was sent in the request are the
 contents of the encrypted part.
@@ -2008,7 +2004,7 @@ a peer receiving a handshake packet (Other Cookie).
 
 The nonce is a nonce used to encrypt the encrypted part of the handshake
 packet. The encrypted part of the handshake packet is encrypted with the long
-term keys of both peers. This is to prevent impersonation. 
+term keys of both peers. This is to prevent impersonation.
 
 Inside the encrypted part of the handshake packet there is a 'base nonce' and a
 session public key. The 'base nonce' is a nonce that the other should use to
@@ -2061,14 +2057,16 @@ a valid encrypted data packet is received and decrypted.
 The states of a connection:
 
 1. Not accepted: Send handshake packets.
-2. Accepted: A handshake packet has been received from the other peer but no encrypted encrypted packets: continue (or start) sending handshake packets because the peer can't know if the other has received them.
-3. Confirmed: A valid encrypted packet has been received from the other peer: Connection is fully established: stop sending handshake packets.
+1. Accepted: A handshake packet has been received from the other peer but no encrypted encrypted packets: continue (or start) sending handshake packets because the peer can't know if the other has received them.
+1. Confirmed: A valid encrypted packet has been received from the other peer: Connection is fully established: stop sending handshake packets.
 
 Toxcore sends handshake packets every second 8 times and times out the
 connection if the connection does not get confirmed (no encrypted packet is
 received) within this time.
 
 Perfect handshake scenario:
+
+```text
 Peer 1                Peer 2
 Cookie request   ->
                       <- Cookie response
@@ -2081,11 +2079,10 @@ Encrypted packet ->   <- Encrypted packet
        Connection successful.
 Encrypted packets -> <- Encrypted packets
 
-
 More realistic handshake scenario:
 Peer 1                Peer 2
-Cookie request   ->  <packet lost>
-Cookie request   -> 
+Cookie request   ->   *packet lost*
+Cookie request   ->
                       <- Cookie response
                       *Peer 2 randomly starts new connection to peer 1
                       <- Cookie request
@@ -2096,25 +2093,28 @@ Encrypted packet ->   <- Encrypted packet
 *confirms connection  *confirms connection
        Connection successful.
 Encrypted packets -> <- Encrypted packets
-
+```
 
 The reason why the handshake is like this is because of certain design requirements:
-1. The handshake must not leak the long term public keys of the peers to a possible attacker who would be looking at the packets but each peer must know for sure that they are connecting to the right peer and not an impostor.
-2. A connection must be able of being established if only one of the peers has the information necessary to initiate a connection (DHT public key of the peer and a link to the peer).
-3. If both peers initiate a connection to each other at the same time the connection must succeed without issues.
-4. There must be perfect forward secrecy.
-5. Must be resistant to any possible attacks.
 
+1. The handshake must not leak the long term public keys of the peers to a possible attacker who would be looking at the packets but each peer must know for sure that they are connecting to the right peer and not an impostor.
+1. A connection must be able of being established if only one of the peers has the information necessary to initiate a connection (DHT public key of the peer and a link to the peer).
+1. If both peers initiate a connection to each other at the same time the connection must succeed without issues.
+1. There must be perfect forward secrecy.
+1. Must be resistant to any possible attacks.
 
 Due to how it is designed only one connection is possible at a time between 2
 peers.
 
 Encrypted packets:
+
+```text
 [uint8_t 27]
 [uint16_t (in network byte order) the last 2 bytes of the nonce used to encrypt this]
 [encrypted with the session key and 'base nonce' set by the receiver in their handshake + packet number (starting at 0, big endian math):
     [plain data]
 ]
+```
 
 The packet id for encrypted packets is 27. Encrypted packets are the packets
 used to send data to the other peer in the connection. Since these packets can
@@ -2153,7 +2153,6 @@ Toxcore uses the following method to calculate the nonce for each packet:
 
     DATA_NUM_THRESHOLD = (1/3 of the maximum number that can be stored in an unsigned 2 bit integer)
     if decryption succeeds and diff > (DATA_NUM_THRESHOLD * 2) then: saved_base_nonce = saved_base_nonce + DATA_NUM_THRESHOLD
-
 
 First it takes the difference between the 2 byte number on the packet and the
 last. Because the 3 values are unsigned 16 bit ints and rollover is part of the
@@ -2197,7 +2196,7 @@ cause all (except the first received) to be ignored.
 
 Each lossless packet contains both a 4 byte number indicating the highest
 packet number received and processed and a 4 byte packet number which is the
-packet number of the data in the packet. 
+packet number of the data in the packet.
 
 In lossy packets, the layout is the same except that instead of a packet
 number, the second 4 byte number represents the packet number of a lossless
@@ -2205,7 +2204,6 @@ packet if one were sent right after. This number is used by the receiver to
 know if any packets have been lost. (for example if it receives 4 packets with
 numbers (0, 1, 2, 5) and then later a lossy packet with this second number as:
 8 it knows that packets: 3, 4, 6, 7 have been lost and will request them)
-
 
 How the reliability is achieved:
 
@@ -2241,7 +2239,6 @@ relevant module and remove it from the array but since packet number 1 is
 missing he will stop there. Contents of the buffer are now: 2, 3. The receiver
 knows packet number 1 is missing and will request it from the sender by using a
 packet request packet:
-
 
 data ids:
 0: padding (skipped until we hit a non zero (data id) byte)
@@ -2284,13 +2281,16 @@ between the requested packets will be assumed to be successfully received by
 the other.
 
 Packet request packets are sent at least every 1 second in toxcore and more
-when packets are being received. 
+when packets are being received.
 
 The current formula used is (note that this formula is likely sub-optimal):
+
+```text
 REQUEST_PACKETS_COMPARE_CONSTANT = 50.0 double request_packet_interval =
 (REQUEST_PACKETS_COMPARE_CONSTANT /
 (((double)num_packets_array(&conn->recv_array) + 1.0) / (conn->packet_recv_rate
 + 1.0)));
+```
 
 num_packets_array(&conn->recv_array) returns the difference between the highest
 packet number received and the last one handled. In the toxcore code it refers
@@ -2325,7 +2325,7 @@ How it works is basically to send packets faster and faster until none can go
 through the link and then stop sending them faster than that.
 
 Currently the congestion control uses the following formula in toxcore however
-that is probably not the best way to do it. 
+that is probably not the best way to do it.
 
 The current formula is to take the difference between the current size of the
 send queue and the size of the send queue 1.2 seconds ago, take the total
@@ -2448,59 +2448,75 @@ Onion packet (request):
 Initial (TCP) data sent as the data of a onion packet through the TCP client
 module:
 
-[IP_Port of node B][a random public key]encrypted with the random private key and the pub key of Node B and the nonce:[ 
-[IP_Port of node C][a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[ 
+```text
+[IP_Port of node B][a random public key]encrypted with the random private key and the pub key of Node B and the nonce:[
+[IP_Port of node C][a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[
 [IP_Port of node D][data to send to Node D]]]
+```
 
 initial (UDP) (sent from us to node A):
 
+```text
 [uint8_t packet id (128)][nonce]
-[our temp DHT public key]encrypted with our temp DHT private key and the pub key of Node A and the nonce:[ 
-[IP_Port of node B][a random public key]encrypted with the random private key and the pub key of Node B and the nonce:[ 
-[IP_Port of node C][a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[ 
+[our temp DHT public key]encrypted with our temp DHT private key and the pub key of Node A and the nonce:[
+[IP_Port of node B][a random public key]encrypted with the random private key and the pub key of Node B and the nonce:[
+[IP_Port of node C][a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[
 [IP_Port of node D][data to send to Node D]]]]
+```
 
 (sent from node A to node B):
 
+```text
 [uint8_t packet id (129)][nonce]
-[a random public key]encrypted with the random private key and the pub key of Node B and the nonce:[ 
-[IP_Port of node C][a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[ 
+[a random public key]encrypted with the random private key and the pub key of Node B and the nonce:[
+[IP_Port of node C][a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[
 [IP_Port of node D][data to send to Node D]]][nonce (for the following symmetric encryption)]encrypted with temp symmetric key of Node A: [IP_Port (of us)]
+```
 
 (sent from node B to node C):
 
+```text
 [uint8_t packet id (130)][nonce]
-[a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[ 
+[a random public key]encrypted with the random private key and the pub key of Node C and the nonce:[
 [IP_Port of node D][data to send to Node D]][nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node B:[IP_Port (of Node A)[nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node A: [IP_Port (of us)]]
+```
 
 (sent from node C to node D):
 
+```text
 [data to send to Node D][nonce (for the following symmetric encryption)]encrypted with temp symmetric key of Node C:
 [IP_Port (of Node B)[nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node B:[IP_Port (of Node A)[nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node A: [IP_Port (of us)]]]
+```
 
 Onion packet (response):
 
 initial (sent from node D to node C):
 
+```text
 [uint8_t packet id (140)][nonce (for the following symmetric encryption)]encrypted with temp symmetric key of Node C:
 [IP_Port (of Node B)[nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node B:[IP_Port (of Node A)[nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node A: [IP_Port (of us)]]][data to send back]
+```
 
 (sent from node C to node B):
 
+```text
 [uint8_t packet id (141)][nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node B:[IP_Port (of Node A)[nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node A: [IP_Port (of us)]][data to send back]
+```
 
 (sent from node B to node A):
 
+```text
 [uint8_t packet id (142)][nonce (for the following symmetric encryption)]
 encrypted with temp symmetric key of Node A: [IP_Port (of us)][data to send back]
+```
 
 (sent from node A to us):
 
@@ -2512,7 +2528,7 @@ only be able to receive that decrypted packet, decrypt it again and know where
 to send it and so on. You will also notice a piece of encrypted data (the
 sendback) at the end of the packet that grows larger and larger at every layer
 with the IP of the previous node in it. This is how the node receiving the end
-data (Node D) will be able to send data back. 
+data (Node D) will be able to send data back.
 
 When a peer receives an onion packet, they will decrypt it, encrypt the
 coordinates (IP/port) of the source along with the already existing encrypted
@@ -2521,9 +2537,13 @@ refreshed every hour (in toxcore) as a security measure to force expire paths.
 
 Here's a diagram how it works:
 
+```text
 peer -> [onion1[onion2[onion3[data]]]] -> Node A -> [onion2[onion3[data]]][sendbackA] -> Node B -> [onion3[data]][sendbackB[sendbackA]] -> Node C -> [data][SendbackC[sendbackB[sendbackA]]]-> Node D (end)
+```
 
+```text
 Node D -> [SendbackC[sendbackB[sendbackA]]][response] -> Node C -> [sendbackB[sendbackA]][response] -> Node B -> [sendbackA][response] -> Node A -> [response] -> peer
+```
 
 The random public keys in the onion packets are temporary public keys generated
 for and used for that onion path only. This is done in order to make it
@@ -2555,7 +2575,7 @@ nonce in the sendback data must be a 24 byte nonce.
 Each onion layers has a different packed id that identifies it so that an
 implementation knows exactly how to handle them. Note that any data being sent
 back must be encrypted, appear random and not leak information in any way as
-all the nodes in the path will see it. 
+all the nodes in the path will see it.
 
 If anything is wrong with the received onion packets (decryption fails) the
 implementation should drop them.
@@ -2563,7 +2583,7 @@ implementation should drop them.
 The implementation should have code for each different type of packet that
 handles it, adds (or decrypts) a sendback and sends it to the next peer in the
 path. There are a lot of packets but an implementation should be very
-straightforward. 
+straightforward.
 
 Note that if the first node in the path is a TCP relay, the TCP relay must put
 an identifier (instead of an IP/Port) in the sendback so that it knows that any
@@ -2580,7 +2600,7 @@ encrypted (with our real long term private key if we want to announce ourselves,
 [[(32 bytes) ping_id][public key we are searching for][public key that we want those sending back data packets to use.][data to send back in response(8 bytes)]]
 
 (if the ping id is zero, respond with a announce response packet)
-(If the ping id matches the one the node sent in the announce response and the public key matches the one being searched for, 
+(If the ping id matches the one the node sent in the announce response and the public key matches the one being searched for,
 add the part used to send data to our list (if the list is full make it replace the furthest entry))
 
 data to route request packet:
@@ -2753,7 +2773,7 @@ If the public key is in the datastructure, it will check whether the public key
 that was used to encrypt the announce packet is equal to the announced public
 key, if it isn't then it means that the peer is searching for a peer and that
 we know it. This means the is_stored is set to 1 and the sending back data
-public key in the announce entry is copied to the packet. 
+public key in the announce entry is copied to the packet.
 
 If it (key used to encrypt the announce packet) is equal (to the announced
 public key which is also the 'public key we are searching for' in the announce
@@ -2924,7 +2944,7 @@ the friend as if toxcore was just started.
 
 If toxcore goes offline (no onion traffic for 20 seconds) toxcore will
 aggressively reannounce itself and search for friends as if it was just
-started. 
+started.
 
 # ping_array.txt
 
