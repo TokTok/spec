@@ -196,11 +196,7 @@ Length      | Contents
 The DHT Send nodes uses the Packed Node Format. The packed node format is a way
 to store the node info in a small yet easy to parse format. The packed node
 format is used in many places in Tox. To store more than one node, simply
-append another one to the previous one:
-
-```text
-[packed node 1][packed node 2][...]
-```
+append another one to the previous one: `[packed node 1][packed node 2][...]`.
 
 In the Packed Node Format, `ip_type` numbers `2` and `10` are used to indicate
 an IPv4 or IPv6 UDP node. The number `130` is used for an `IPv4 TCP relay` and
@@ -489,7 +485,7 @@ in Messenger for the friend.
 The Tox ID is used to identify peers so that they can be added as friends in
 Tox. In order to add a friend, a Tox user must have the friend's Tox ID.The Tox
 ID contains the long term public key of the peer (32 bytes) followed by the 4
-byte nospam (see: friend_requests) value and a 2 byte XOR checksum. The method
+byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The method
 of sending the Tox ID to others is up to the user and the client but the
 recommended way is to encode it in hexadecimal format and have the user
 manually send it to the friend using another program.
@@ -679,11 +675,11 @@ length: 4 bytes if `control_type` isn't seek. 8 bytes if `control_type` is seek.
 
 Length      | Contents
 ----------- | --------
-  `1`       | `uint8_t` (0x51)
-  `1`       | `uint8_t` `send_receive` (0 if the control targets a file being sent (by the peer sending the file control), 1 if it targets a file being received)
-  `1`       | `uint8_t` file number
-  `1`       | `uint8_t` `control_type` (0 = accept, 1 = pause, 2 = kill, 3 = seek)
-  `8`       | `uint64_t` seek parameter (only included when `control_type` is seek)
+`1`         | `uint8_t` (0x51)
+`1`         | `uint8_t` `send_receive` (0 if the control targets a file being sent (by the peer sending the file control), 1 if it targets a file being received)
+`1`         | `uint8_t` file number
+`1`         | `uint8_t` `control_type` (0 = accept, 1 = pause, 2 = kill, 3 = seek)
+`8`         | `uint64_t` seek parameter (only included when `control_type` is seek)
 
 Note that if it is included the seek parameter will be sent in big
 endian/network byte format.
@@ -692,10 +688,10 @@ endian/network byte format.
 
 length: 2 to 1373 bytes.
 
-Length    | Contents
---------- | --------
-  `1`       | `uint8_t` (0x52)
-  `1`       | `uint8_t` file number
+Length      | Contents
+----------- | --------
+`1`         | `uint8_t` (0x52)
+`1`         | `uint8_t` file number
 `[0, 1371]` | file data piece
 
 Files are transferred in Tox using File transfers.
@@ -949,7 +945,7 @@ packets must be sent as they are smaller than OOB packets.
 
 OOB recv and data packets must be handled and passed to the module using it.
 
-# TCP_connections
+# TCP connections
 
 `TCP_connections` takes care of handling multiple TCP client instances to
 establish a reliable connection via TCP relays to a friend. Connecting to a
@@ -1045,15 +1041,15 @@ connection, TCP OOB (out of band) packets will be used to send data instead of
 data packets. TCP OOB packets are used in this case since the relay most likely
 has the peer connected but it has not sent a routing request to connect to us.
 
-`TCP_connections` is used as the bridge between individual TCP_client instances
+`TCP_connections` is used as the bridge between individual `TCP_client` instances
 and `net_crypto`, or the bridge between individual connections and something
 that requires an interface that looks like one connection.
 
-# TCP_server.txt
+# TCP server
 
 The TCP server in tox has the goal of acting like a TCP relay between clients
 who cannot connect directly to each other or who for some reason are limited to
-using the TCP protocol to connect to each other. TCP_server is typically run
+using the TCP protocol to connect to each other. `TCP_server` is typically run
 only on actual server machines but any Tox client could host one as the api to
 run one is exposed through the tox.h api.
 
@@ -1103,9 +1099,22 @@ clients.
 To establish a secure connection with a TCP server send the following 128 bytes
 of data or handshake packet to the server:
 
-```text
-[DHT public key of client (32 bytes)][nonce for the encrypted data [24 bytes]][encrypted with the DHT private key of the client and public key of the server and the nonce:[public key (32 bytes)][base nonce the TCP client wants the TCP server to use to encrypt the packets sent to the TCP client (24 bytes)]]
-```
+Length      | Contents
+----------- | --------
+`32`        | DHT public key of client
+`24`        | Nonce for the encrypted data
+`72`        | Payload (plus MAC)
+
+Payload is encrypted with the DHT private key of the client and public key of
+the server and the nonce:
+
+Length      | Contents
+----------- | --------
+`32`        | Public key
+`24`        | Base nonce
+
+The base nonce is the one TCP client wants the TCP server to use to encrypt the
+packets sent to the TCP client.
 
 The first 32 bytes are the public key (DHT public key) that the TCP client is
 announcing itself to the server with. The next 24 bytes are a nonce which the
@@ -1119,9 +1128,21 @@ the TCP client.
 If the server decrypts successfully the encrypted data in the handshake packet
 and responds with the following handshake response of length 96 bytes:
 
-```text
-[nonce for the encrypted data [24 bytes]][encrypted with the private key of the server and the DHT public key of the client and the nonce:[public key (32 bytes)][base nonce the TCP server wants the TCP client to use to encrypt the packets sent to the TCP server (24 bytes)]]
-```
+Length      | Contents
+----------- | --------
+`24`        | Nonce for the encrypted data
+`72`        | Payload (plus MAC)
+
+Payload is encrypted with the private key of the server and the DHT public key
+of the client and the nonce:
+
+Length      | Contents
+----------- | --------
+`32`        | Public key
+`24`        | Base nonce
+
+The base nonce is the one the TCP server wants the TCP client to use to encrypt
+the packets sent to the TCP server.
 
 The client already knows the long term public key of the server so it is
 omitted in the response, instead only a nonce is present in the unencrypted
@@ -1169,15 +1190,13 @@ different peers will have the same public key so this is the correct behavior.
 
 Encrypted data packets look like this to outsiders:
 
-```text
-[[uint16_t (length of data)][encrypted data]]
-```
+Length      | Contents
+----------- | --------
+`2`         | `uint16_t` length of data
+variable    | encrypted data
 
 In a TCP stream they would look like:
-
-```text
-[[uint16_t (length of data)][encrypted data]][[uint16_t (length of data)][encrypted data]][[uint16_t (length of data)][encrypted data]]...
-```
+`[[length][data]][[length][data]][[length][data]]...`.
 
 Both the client and server use the following (temp public and private (client
 and server) connection keys) which are each generated for the connection and
@@ -1221,19 +1240,31 @@ data packets sent will be of size 2 + 1417 which is 1419 total.
 
 The logic behind the format of the handshake is that we:
 
-1. need to prove to the server that we own the private key related to the public key we are announcing ourselves with.
+1. need to prove to the server that we own the private key related to the public
+   key we are announcing ourselves with.
 1. need to establish a secure connection that has perfect forward secrecy
 1. prevent any replay, impersonation or other attacks
 
 How it accomplishes each of those points:
 
-1. If the client does not own the private key related to the public key they will not be able to create the handshake packet.
-1. temporary session keys generated by the client and server in the encrypted part of the handshake packets are used to encrypt/decrypt packets during the session.
-1. a. Attacker modifies any byte of the handshake packets: Decryption fail, no attacks possible
-   b. Attacker captures the handshake packet from the client and replays it later to the server: Attacker will never get the server to confirm the connection (no effect)
-   c. Attacker captures a server response and sends it to the client next time they try to connect to the server: Client will never confirm the connection. (See: TCP_client)
-   d. Attacker tries to impersonate a server: They won't be able to decrypt the handshake and won't be able to respond.
-   e. Attacker tries to impersonate a client: Server won't be able to decrypt the handshake.
+1. If the client does not own the private key related to the public key they
+   will not be able to create the handshake packet.
+1. Temporary session keys generated by the client and server in the encrypted
+   part of the handshake packets are used to encrypt/decrypt packets during the
+   session.
+1. The following attacks are prevented:
+    a. Attacker modifies any byte of the handshake packets: Decryption fail, no
+       attacks possible
+    b. Attacker captures the handshake packet from the client and replays it
+       later to the server: Attacker will never get the server to confirm the
+       connection (no effect)
+    c. Attacker captures a server response and sends it to the client next time
+       they try to connect to the server: Client will never confirm the
+       connection. (See: `TCP_client`)
+    d. Attacker tries to impersonate a server: They won't be able to decrypt the
+       handshake and won't be able to respond.
+    e. Attacker tries to impersonate a client: Server won't be able to decrypt
+       the handshake.
 
 The logic behind the format of the encrypted packets is that:
 
@@ -1242,47 +1273,107 @@ The logic behind the format of the encrypted packets is that:
 
 How it accomplishes each of those points:
 
-1. 2 bytes before each packet of encrypted data denote the length. We assume a functioning TCP will deliver bytes in order which makes it work. If the TCP doesn't it most likely means it is under attack and for that see the next point.
-1. a. Modifying the length bytes will either make the connection time out and/or decryption fail.
-   b. Modifying any encrypted bytes will make decryption fail.
-   c. Injecting any bytes will make decryption fail.
-   d. Trying to re order the packets will make decryption fail because of the ordered nonce.
-   c. Removing any packets from the stream will make decryption fail because of the ordered nonce.
+1. 2 bytes before each packet of encrypted data denote the length. We assume a
+   functioning TCP will deliver bytes in order which makes it work. If the TCP
+   doesn't it most likely means it is under attack and for that see the next
+   point.
+1. The following attacks are prevented:
+    a. Modifying the length bytes will either make the connection time out
+       and/or decryption fail.
+    b. Modifying any encrypted bytes will make decryption fail.
+    c. Injecting any bytes will make decryption fail.
+    d. Trying to re order the packets will make decryption fail because of the
+       ordered nonce.
+    c. Removing any packets from the stream will make decryption fail because of
+       the ordered nonce.
+
+## Encrypted payload types
 
 The folowing represents the various types of data that can be sent inside
 encrypted data packets.
-//TODO: nice graphics
 
-```text
-0 - Routing request.
-[uint8_t id (0)][public key (32 bytes)]
-1 - Routing request response.
-[uint8_t id (1)][uint8_t (rpid) 0 (or invalid connection_id) if refused, connection_id if accepted][public key (32 bytes)]
-2 - Connect notification:
-[uint8_t id (2)][uint8_t (connection_id of connection that got connected)]
-3 - Disconnect notification:
-[uint8_t id (3)][uint8_t (connection_id of connection that got disconnected)]
-4 - ping packet
-[uint8_t id (4)][uint64_t ping_id (0 is invalid)]
-5 - ping response (pong)
-[uint8_t id (5)][uint64_t ping_id (0 is invalid)]
-6 - OOB send
-[uint8_t id (6)][destination public key (32 bytes)][data]
-7 - OOB recv
-[uint8_t id (7)][senders public key (32 bytes)][data]
-8 - onion packet (same format as initial onion packet) but packet id is 8 instead of 128)
-9 - onion packet response (same format as onion packet with id 142 but id is 9 instead.)
-16 and up - Data
-[uint8_t connection_id][data]
-```
+### Routing request (0x00)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x00)
+`32`      | Public key
+
+### Routing request response (0x01)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x01)
+`1`       | `uint8_t` (rpid) 0 (or invalid `connection_id`) if refused, `connection_id` if accepted
+`32`      | Public key
+
+### Connect notification (0x02)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x02)
+`1`       | `uint8_t` `connection_id` of connection that got connected
+
+### Disconnect notification (0x03)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x03)
+`1`       | `uint8_t` `connection_id` of connection that got disconnected
+
+### Ping packet (0x04)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x04)
+`8`       | `uint64_t` `ping_id` (0 is invalid)
+
+### Ping response (pong) (0x05)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x05)
+`8`       | `uint64_t` `ping_id` (0 is invalid)
+
+### OOB send (0x06)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x06)
+`32`      | Destination public key
+variable  | Data
+
+### OOB recv (0x07)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` (0x07)
+`32`      | Sender public key
+variable  | Data
+
+### Onion packet (0x08)
+
+Same format as initial onion packet but packet id is 0x08 instead of 0x80.
+
+### Onion packet response (0x09)
+
+Same format as onion packet but packet id is 0x09 instead of 0x8e.
+
+### Data (0x10 and up)
+
+Length    | Contents
+--------- | --------
+`1`       | `uint8_t` packet id
+`1`       | `uint8_t` connection id
+variable  | data
 
 The TCP server is set up in a way to minimize waste while relaying the many
 packets that might go between two tox peers hence clients must create
-connections to other clients on the relay. The connection number is a uint8_t
-and must be equal or greater to 16 in order to be valid. Because a uint8_t has
+connections to other clients on the relay. The connection number is a `uint8_t`
+and must be equal or greater to 16 in order to be valid. Because a `uint8_t` has
 a maximum value of 256 it means that the maximum number of different
 connections to other clients that each connection can have is 240. The reason
-valid connection_ids are bigger than 16 is because they are the first byte of
+valid `connection_ids` are bigger than 16 is because they are the first byte of
 data packets. Currently only number 0 to 9 are taken however we keep a few
 extras in case we need to extend the protocol without breaking it completely.
 
@@ -1292,8 +1383,8 @@ the public the peer announced themselves as. The server must respond to this
 with a Routing response.
 
 Routing response (Sent by server to client): The response to the routing
-request, tell the client if the routing request succeeded (valid connection_id)
-and if it did, tell them the id of the connection (connection_id). The public
+request, tell the client if the routing request succeeded (valid `connection_id`)
+and if it did, tell them the id of the connection (`connection_id`). The public
 key sent in the routing request is also sent in the response so that the client
 can send many requests at the same time to the server without having code to
 track which response belongs to which public key.
@@ -1304,18 +1395,18 @@ fails the public key in the response will be the public key in the failed
 request.
 
 Connect notification (Sent by server to client): Tell the client that
-connection_id is now connected meaning the other is online and data can be sent
-using this connection_id.
+`connection_id` is now connected meaning the other is online and data can be sent
+using this `connection_id`.
 
 Disconnect notification (Sent by client to server): Sent when client wants the
-server to forget about the connection related to the connection_id in the
+server to forget about the connection related to the `connection_id` in the
 notification. Server must remove this connection and must be able to reuse the
-connection_id for another connection. If the connection was connected the
+`connection_id` for another connection. If the connection was connected the
 server must send a disconnect notification to the other client. The other
 client must think that this client has simply disconnected from the TCP server.
 
 Disconnect notification (Sent by server to client): Sent by the server to the
-client to tell them that the connection with connection_id that was connected
+client to tell them that the connection with `connection_id` that was connected
 is now disconnect. It is sent either when the other client of the connection
 disconnect or when they tell the server to kill the connection (see above).
 
@@ -1422,12 +1513,13 @@ facilitates connecting the two friends together using the relays as the friend
 who receives the packet will associate the sent relays to the `net_crypto`
 connection they received it from. When both sides do this they will be able to
 connect to each other using the relays. The packet id or first byte of the
-packet of share relay packets is 17. This is then followed by some TCP relays
+packet of share relay packets is 0x11. This is then followed by some TCP relays
 stored in packed node format.
 
-```text
-[uint8_t packet id (17)][TCP relays in packed node format (see DHT)]
-```
+Length      | Contents
+----------- | --------
+`1`         | `uint8_t` (0x11)
+variable    | TCP relays in packed node format (see DHT)
 
 If local IPs are received as part of the packet, the local IP will be replaced
 with the IP of the peer that sent the relay. This is because we assume this is
@@ -1487,7 +1579,9 @@ Friend request packet when sent as an onion data packet:
 [uint8_t (32)][Friend request]
 ```
 
-Friend request packet when sent as a `net_crypto` data packet (If we are directly connected to the peer because of a group chat but are not friends with them):
+Friend request packet when sent as a `net_crypto` data packet (If we are
+directly connected to the peer because of a group chat but are not friends with
+them):
 
 ```text
 [uint8_t (18)][Friend request]
