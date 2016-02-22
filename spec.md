@@ -1253,18 +1253,18 @@ How it accomplishes each of those points:
    part of the handshake packets are used to encrypt/decrypt packets during the
    session.
 1. The following attacks are prevented:
-    a. Attacker modifies any byte of the handshake packets: Decryption fail, no
-       attacks possible
-    b. Attacker captures the handshake packet from the client and replays it
-       later to the server: Attacker will never get the server to confirm the
-       connection (no effect)
-    c. Attacker captures a server response and sends it to the client next time
-       they try to connect to the server: Client will never confirm the
-       connection. (See: `TCP_client`)
-    d. Attacker tries to impersonate a server: They won't be able to decrypt the
-       handshake and won't be able to respond.
-    e. Attacker tries to impersonate a client: Server won't be able to decrypt
-       the handshake.
+    - Attacker modifies any byte of the handshake packets: Decryption fail, no
+      attacks possible.
+    - Attacker captures the handshake packet from the client and replays it
+      later to the server: Attacker will never get the server to confirm the
+      connection (no effect).
+    - Attacker captures a server response and sends it to the client next time
+      they try to connect to the server: Client will never confirm the
+      connection. (See: `TCP_client`)
+    - Attacker tries to impersonate a server: They won't be able to decrypt the
+      handshake and won't be able to respond.
+    - Attacker tries to impersonate a client: Server won't be able to decrypt
+      the handshake.
 
 The logic behind the format of the encrypted packets is that:
 
@@ -1278,14 +1278,14 @@ How it accomplishes each of those points:
    doesn't it most likely means it is under attack and for that see the next
    point.
 1. The following attacks are prevented:
-    a. Modifying the length bytes will either make the connection time out
-       and/or decryption fail.
-    b. Modifying any encrypted bytes will make decryption fail.
-    c. Injecting any bytes will make decryption fail.
-    d. Trying to re order the packets will make decryption fail because of the
-       ordered nonce.
-    c. Removing any packets from the stream will make decryption fail because of
-       the ordered nonce.
+    - Modifying the length bytes will either make the connection time out
+      and/or decryption fail.
+    - Modifying any encrypted bytes will make decryption fail.
+    - Injecting any bytes will make decryption fail.
+    - Trying to re order the packets will make decryption fail because of the
+      ordered nonce.
+    - Removing any packets from the stream will make decryption fail because of
+      the ordered nonce.
 
 ## Encrypted payload types
 
