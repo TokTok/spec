@@ -6,3 +6,7 @@ install:
 script:
   - make
   - make check
+
+branches:
+  only:
+    - master
