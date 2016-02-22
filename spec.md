@@ -17,8 +17,6 @@ here.
 The goal of this module is to provide nice interfaces to some crypto related
 functions.
 
-TODO: put this in the intro.
-
 All public keys in toxcore are 32 bytes and are generated with the
 `crypto_box_keypair()` function of the NaCl crypto library.
 
