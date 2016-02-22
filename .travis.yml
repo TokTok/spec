@@ -1,4 +1,4 @@
-language: ruby
+language: rust
 
 install:
   - gem install mdl
