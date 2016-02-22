@@ -1,62 +1,128 @@
 % The Tox Reference
 
+# Introduction
+
+This document is a textual specification of the Tox protocol and all the
+supporting modules required to implement it. The goal of this document is to
+give enough guidance to permit a complete and correct implementation of the
+protocol.
+
+All data types are defined before their first use, and their binary protocol
+representation is given. The protocol representations are normative and must be
+implemented exactly as specified. For some types, human-readable
+representations are suggested. An implementation may choose to provide no such
+representation or a different one. The implementation is free to choose any
+in-memory representation of the specified types, as long as they can be encoded
+to and decoded from the specified protocol representation.
+
+A String is a data structure used for human readable text. Strings are
+sequences of glyphs. A glyph consists of one non-zero-width unicode code point
+and zero or more zero-width unicode code points. The human-readable
+representation of a String starts and ends with a quotation mark (`"`) and
+contains all human-readable glyphs verbatim. Control characters are represented
+in an isomorphic human-readable way. I.e. every control character has exactly
+one human-readable representation, and a mapping exists from the human-readable
+representation to the control character. Therefore, the use of Unicode Control
+Characters (U+240x) is not permitted without additional marker.
+
 # Crypto
 
-Crypto core contains all the crypto related functions used by toxcore that
-relate to random numbers, encryption and decryption, key generation, nonces and
-random nonces. Not all crypto library functions are wrapped, only those that
-needed to be are. For example the NaCl functions that require a zero byte
-buffer before the data. You'll see functions that are provided by the crypto
-library used in the toxcore code, not just `crypto_core` functions.
+The Crypto module contains all the functions and data types related to crypto.
+This includes random number generation, encryption and decryption, key
+generation, operations on nonces and generating random nonces.
 
-The create and handle request functions are the encrypt and decrypt functions
-for a type of DHT packets used to send data directly to other DHT peers. To be
-honest they should probably be in the DHT module but they seem to fit better
-here.
+## Text
 
-The goal of this module is to provide nice interfaces to some crypto related
-functions.
+The Tox protocol differentiates between two types of text: Plain Text and
+Cipher Text. Cipher Text may be transmitted to peers. Plain Text can be
+Sensitive or Non Sensitive. Sensitive Plain Text must be transformed into
+Cipher Text using the encryption function before it can be transmitted to
+peers.
 
-All public keys in toxcore are 32 bytes and are generated with the
-`crypto_box_keypair()` function of the NaCl crypto library.
+## Key
 
-The `crypto_box*()` functions of the NaCl crypto library are used to encrypt and
-decrypt all packets.
+A Crypto Number is a large fixed size unsigned integer. Its binary encoding is
+as a Big Endian integer. Its human-readable encoding is as a base-16 number
+encoded as String.
 
-As explained in the NaCl documentation, `crypto_box` is public key cryptography
-that uses Curve25519 to generate a shared encryption key by using the
-Curve25519 public key of the one that will be receiving the packet and the
-Curve25519 private key of the one sending the packet. When the receiver
-receives the packet, they will pass the counterparts of both keys used to
-generate the shared key used to encrypt the packet (The receivers private key
-counterpart of the receivers public key and the senders public key counterpart
-of the senders private key) to the function/algorithm and get the same shared
-key.
+Tox uses four kinds of Crypto Numbers:
 
-This 32 byte shared key is what is used to encrypt and decrypt packets. This
-fact must be taken into account because it means since the key used to encrypt
-and decrypt packets is the same either side can both encrypt and decrypt valid
-packets. It also means that packets being sent could be replayed back to the
-sender if there is nothing to prevent it.
+Type         | Bits | Encoded byte size
+------------ | ---- | -----------------
+Public Key   | 256  | 32
+Secret Key   | 256  | 32
+Combined Key | 256  | 32
+Nonce        | 192  | 24
+
+### Key Pair
+
+A Key Pair is a pair of Secret Key and Public Key. A new key pair is generated
+using the `crypto_box_keypair` function of the NaCl crypto library. Two
+separate calls to the key pair generation function must return distinct key
+pairs. See the [NaCl documentation](https://nacl.cr.yp.to/box.html) for
+details.
+
+A Public Key can be computed from a Secret Key using the NaCl function
+`crypto_scalarmult_base`, which computes the scalar product of a standard group
+element and the Secret Key. See the [NaCl
+documentation](https://nacl.cr.yp.to/scalarmult.html) for details.
+
+### Combined Key
+
+A Combined Key is computed from a Secret Key and a Public Key using the NaCl
+function `crypto_box_beforenm`. Given two Key Pairs KP1 (SK1, PK1) and KP2
+(SK2, PK1), the Combined Key computed from (SK1, PK2) equals the one computed
+from (SK2, PK1). This allows for symmetric encryption, as peers can derive the
+same shared key from their own secret key and their peer's public key.
+
+In the Tox protocol, packets are encrypted using the public key of the receiver
+and the secret key of the sender. The receiver decrypts the packets using the
+receiver's secret key and the sender's public key.
+
+The fact that the same key is used to encrypt and decrypt packets on both sides
+means that packets being sent could be replayed back to the sender if there is
+nothing to prevent it.
 
 The shared key generation is the most resource intensive part of the
 encryption/decryption which means that resource usage can be reduced
 considerably by saving the shared keys and reusing them later as much as
 possible.
 
-Once the shared key is generated, the encryption is done using xsalsa20 and
-authenticated with poly1305. This is authenticated symmetric cryptography.
+### Nonce
 
-Nonces used for `crypto_box` are 24 bytes.
+A random nonce is generated using the cryptographically secure random number
+generator from the NaCl library `randombytes`.
 
-The random nonce generation function is used everywhere in toxcore to generate
-nonces. It uses the cryptographically secure random number generator in toxcore
-which is the one exposed by NaCl (randombytes) which prevents new nonces from
-being associated with previous nonces which could lead to issues in places like
-the onion module. If many different packets could be tied together due to how
-the nonces were generated using rand for example, it might lead to tying DHT
-and onion announce packets together which would introduce a flaw in the system
-as non friends could tie some peoples DHT and long term keys together.
+A nonce is incremented by interpreting it as a Big Endian number and adding 1.
+If the nonce has the maximum value, the value after the increment is 0.
+
+Most parts of the protocol use random nonces. This prevents new nonces from
+being associated with previous nonces. If many different packets could be tied
+together due to how the nonces were generated, it might for example lead to
+tying DHT and onion announce packets together. This would introduce a flaw in
+the system as non friends could tie some people's DHT keys and long term keys
+together.
+
+## Box
+
+The encryption function takes a Combined Key, a Nonce, and a Plain Text, and
+returns a Cipher Text. It uses `crypto_box_afternm` to perform the encryption.
+The meaning of the sentence "encrypting with a secret key, a public key, and a
+nonce" is: compute a combined key from the secret key and the public key and
+then use the encryption function for the transformation.
+
+The decryption function takes a Combined Key, a Nonce, and a Cipher Text, and
+returns either a Plain Text or an error. It uses `crypto_box_open_afternm` from
+the NaCl library. Since the cipher is symmetric, the encryption function can
+also perform decryption, but will not perform message authentication, so the
+implementation must be careful to use the correct functions.
+
+`crypto_box` uses xsalsa20 symmetric encryption and poly1305 authentication.
+
+The create and handle request functions are the encrypt and decrypt functions
+for a type of DHT packets used to send data directly to other DHT peers. To be
+honest they should probably be in the DHT module but they seem to fit better
+here. TODO: What exactly are these functions?
 
 # DHT
 
@@ -85,7 +151,7 @@ further away.
 If each peer in the network knows the peers with the DHT public key closest to
 its DHT public key, then to find a specific peer with public key X a peer just
 needs to recursively ask peers in the DHT for known peers that have the DHT
-public keys closest to X.  Eventually the peer will find the peers in the DHT
+public keys closest to X. Eventually the peer will find the peers in the DHT
 that are the closest to that peer and, if that peer is online, they will find
 them.
 
