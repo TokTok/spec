@@ -124,18 +124,91 @@ for a type of DHT packets used to send data directly to other DHT peers. To be
 honest they should probably be in the DHT module but they seem to fit better
 here. TODO: What exactly are these functions?
 
+# Node Info
+
+## Protocol
+
+A Protocol is a transport layer protocol directly below the Tox protocol
+itself. Tox supports two transport protocols: UDP and TCP. The binary
+representation of the Protocol is a single bit: 0 for UDP, 1 for TCP. If
+encoded as standalone value, the bit is stored in the least significant bit of
+a byte. If followed by other bit-packed data, it consumes exactly one bit.
+
+The human-readable representation for UDP is `"UDP"` and for TCP is `"TCP"`.
+
+## Host Address
+
+A Host Address is either an IPv4 or an IPv6 address. The binary representation
+of an IPv4 address is a Big Endian 32 bit unsigned integer (4 bytes). For an
+IPv6 address, it is a Big Endian 128 bit unsigned integer (16 bytes). The
+binary representation of a Host Address is a 7 bit unsigned integer specifying
+the address family (2 for IPv4, 10 for IPv6), followed by the address itself.
+
+Thus, when packed together with the Protocol, the first bit of the packed byte
+is the protocol and the next 7 bits are the address family.
+
+## Port Number
+
+A Port Number is a 16 bit number. Its binary representation is a Big Endian 16
+bit unsigned integer (2 bytes).
+
+## Socket Address
+
+A Socket Address is a pair of Host Address and Port Number. Together with a
+Protocol, it is sufficient information to address a network port on any
+internet host.
+
+## Node Info (packed node format)
+
+The Node Info data structure contains a Protocol, a Socket Address, and a
+Public Key. This is sufficient information to start communicating with that
+node. The binary representation of a Node Info is called the "packed node
+format".
+
+Length      | Type           | Contents
+----------- | -------------- | --------
+`1` bit     | Protocol       | UDP = 0, TCP = 1
+`7` bit     | Address Family | 2 = IPv4, 10 = IPv6
+`4 | 16`    | IP address     | 4 bytes if Address Family == IPv4, 16 bytes if IPv6
+`2`         | Port Number
+`32`        | Public Key     | (Node ID)
+
+The packed node format is a way to store the node info in a small yet easy to
+parse format. To store more than one node, simply append another one to the
+previous one: `[packed node 1][packed node 2][...]`.
+
+In the packed node format, the first byte (high bit protocol, lower 7 bits
+address family) are called the IP Type. The following table is informative and
+can be used to simplify the implementation.
+
+IP Type        | Protocol | Address Family
+-------------- | -------- | --------------
+`2   (0x02)`   | UDP      | IPv4
+`10  (0x0a)`   | UDP      | IPv6
+`130 (0x82)`   | TCP      | IPv4
+`138 (0x8a)`   | TCP      | IPv6
+
+The number `130` is used for an IPv4 TCP relay and `138` is used to indicate an
+IPv6 TCP relay.
+
+The reason for these numbers is because the numbers on Linux for IPv4 and IPv6
+(the `AF_INET` and `AF_INET6` defines) are `2` and `10`. The TCP numbers are
+just the UDP numbers `+ 128`.
+
 # DHT
 
 The DHT is a self-organizing swarm of all peers in the Tox network. This module
-takes care of finding the IP & port of peers and establishing a route to them
+takes care of finding the IP and port of peers and establishing a route to them
 directly via UDP using [hole punching](#hole-punching) if necessary. The DHT
 only runs on UDP and so is only used if UDP works.
 
 Every peer in the Tox DHT has a temporary public key. This DHT public key acts
-as its address. This address is temporary and is renewed every time the tox
-instance is closed or restarted. The DHT public key of a friend is found using
-the onion module. Once the DHT public key of a friend is known, the DHT is used
-to find them and connect directly to them via UDP.
+as its address. This address is renewed every time the tox instance is closed
+or restarted. The DHT public key of a friend is found using the [onion](#onion)
+module. Once the DHT public key of a friend is known, the DHT is used to find
+them and connect directly to them via UDP.
+
+## Distance
 
 DHT closeness is defined by a distance function, defined as the XOR between the
 2 DHT public keys, both are treated as unsigned 32 byte numbers in big endian
@@ -155,7 +228,7 @@ public keys closest to X. Eventually the peer will find the peers in the DHT
 that are the closest to that peer and, if that peer is online, they will find
 them.
 
-## DHT Packet
+## DHT Packets
 
 The DHT wraps all of it's data inside a standard DHT packet type.
 
@@ -246,36 +319,11 @@ nodes that the node has in their list of known nodes. Finally the same
 
 ### Packed node format
 
-The packed node format contains protocol, address family, IP address, port, and
-public key of a node. This is sufficient information to start communicating with
-that node.
+The DHT Send nodes uses the Packed Node Format.
 
-Length      | Contents
------------ | --------
-`1` bit     | Protocol (UDP = 0, TCP = 1)
-`7` bit     | Address family (2 = IPv4, 10 = IPv6)
-`4 | 16`    | IP address (4 bytes if Address family == IPv4, 16 bytes if IPv6)
-`2`         | Port
-`32`        | Public key (Node ID)
-
-The DHT Send nodes uses the Packed Node Format. The packed node format is a way
-to store the node info in a small yet easy to parse format. The packed node
-format is used in many places in Tox. To store more than one node, simply
-append another one to the previous one: `[packed node 1][packed node 2][...]`.
-
-In the Packed Node Format, `ip_type` is the first byte (high bit protocol, lower
-7 bits address family). `ip_type` numbers `2` and `10` are used to indicate
-an IPv4 or IPv6 UDP node. The number `130` is used for an `IPv4 TCP relay` and
-`138` is used to indicate an `IPv6 TCP relay`. The reason for these numbers is
-because the numbers on my Linux machine for IPv4 and IPv6 (the `AF_INET` and
-`AF_INET6` defines) were `2` and `10`. The TCP numbers are just the UDP numbers
-`+ 128`. The IP is 4 bytes for an IPv4 address (`ip_type` numbers `2` and
-`130`). The IP is 16 bytes for an IPv6 address (`ip_type` numbers `10` and
-`138`). This is followed by 32 bytes of the public key of the node.
-
-Only the UDP `ip_types` (`ip_type 2` and `ip_type 10`) are used in the DHT
-module when sending nodes with the packed node format. This is because the TCP
-`ip_types` are used to send TCP relay information and the DHT is UDP only.
+Only the UDP Protocol (IP Type `2` and `10`) are used in the DHT module when
+sending nodes with the packed node format. This is because the TCP Protocol is
+used to send TCP relay information and the DHT is UDP only.
 
 For its close list toxcore calculates the index of the first bit in the given
 public key that does not match its DHT public key. If the first or most
