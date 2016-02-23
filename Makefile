@@ -5,3 +5,7 @@ spec.html: spec.md
 
 check: spec.md
 	mdl -w spec.md
+
+install: spec.html ../toktok.github.io
+	cp $< ../toktok.github.io
+	cp -a img ../toktok.github.io
