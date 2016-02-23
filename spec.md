@@ -492,6 +492,8 @@ manually send it to the friend using another program.
 
 Tox ID:
 
+![Tox ID](img/tox-id.png)
+
 Length      | Contents
 ----------- | --------
 `32`        | long term public key
