@@ -41,9 +41,15 @@ peers.
 
 ## Key
 
-A Crypto Number is a large fixed size unsigned integer. Its binary encoding is
-as a Big Endian integer. Its human-readable encoding is as a base-16 number
-encoded as String.
+A Crypto Number is a large fixed size unsigned (positive) integer. Its binary
+encoding is as a Big Endian integer in exactly the encoded byte size. Its
+human-readable encoding is as a base-16 number encoded as String. The NaCl
+implementation [libsodium](https://github.com/jedisct1/libsodium) supplies the
+functions `sodium_bin2hex` and `sodium_hex2bin` to aid in implementing the
+human-readable encoding. The in-memory encoding of these crypto numbers in NaCl
+already satisfies the binary encoding, so for applications directly using those
+APIs, binary encoding and decoding is the [identity
+function](https://en.wikipedia.org/wiki/Identity_function).
 
 Tox uses four kinds of Crypto Numbers:
 
@@ -210,14 +216,55 @@ them and connect directly to them via UDP.
 
 ## Distance
 
-DHT closeness is defined by a distance function, defined as the XOR between the
-2 DHT public keys, both are treated as unsigned 32 byte numbers in big endian
-format. A DHT peer with public key 1 would be closer to one with public key 0
-than one with public key 5 for example because: `1 XOR 0 = 1` and `1 XOR 5 =
-4`. The smaller this distance, the closer the peers are said to be.
-Since 1 is smaller it means 1 is closer to 0 than to 5.
+A Distance is a positive integer. Its human-readable representation is a
+base-16 number. Distance is a [monoid](https://en.wikipedia.org/wiki/Monoid)
+with the associative binary operator `+` and the identity element `0`.
 
-Self-organizing in the DHT occurs through each DHT peer connecting to an
+The DHT needs a [metric](https://en.wikipedia.org/wiki/Metric_(mathematics)) to
+determine distance between two nodes. The Distance type is the result of this
+metric. The metric currently used by the Tox DHT is the `XOR` of the nodes'
+public keys. The public keys are interpreted as Big Endian integers (see
+[Crypto Numbers](#key-1)).
+
+An implementation is not required to provide a Distance type, so it has no
+specified binary representation. For example, instead of computing a distance
+and comparing it against another distance, the implementation can choose to
+implement Distance as a pair of public keys and define an ordering on Distance
+without computing the complete integral value. This works, because as soon as
+an ordering decision can be made in the most significant bits, further bits
+won't influence that decision.
+
+The XOR metric `d` satisfies the required conditions:
+
+1. Non-negativity `d(x, y) >= 0`: Since public keys are Crypto Numbers, which
+   are by definition positive, their XOR is necessarily positive.
+1. Identity of indiscernibles `d(x, x) == 0`: The XOR of two equal integers is
+   always zero.
+1. Symmetry `d(x, y) == d(y, x)`: XOR is a symmetric operation.
+1. Subadditivity `d(x, z) <= d(x, y) + d(y, z)`: TODO.
+
+Example: Given three nodes with keys 2, 5, and 6:
+
+- `2 XOR 5 = 7`
+- `2 XOR 6 = 4`
+- `5 XOR 2 = 7`
+- `5 XOR 6 = 3`
+- `6 XOR 2 = 4`
+- `6 XOR 5 = 3`
+
+The closest node from both 2 and 5 is 6. The closest node from 6 is 5 with
+distance 3. This example shows that a key that is close in terms of integer
+addition may not necessarily be close in terms of XOR.
+
+XOR is not an ultrametric, as the stronger inequality `d(x, z) <= max(d(x, y),
+d(y, z))` does not always hold. For example: given `x = 1`, `y = 7`, `z = 6`,
+we obtain the values `1 XOR 6 = 7`, `1 XOR 7 = 6`, `7 XOR 6 = 1`. Here, the
+simple inequality `7 <= 6 + 1` holds, but not `7 <= max(6, 1) = 6`. The Tox DHT
+does not require an ultrametric to function correctly.
+
+## Self-organisation
+
+Self-organising in the DHT occurs through each DHT peer connecting to an
 arbitrary number of peers closest to their own DHT public key and some that are
 further away.
 
