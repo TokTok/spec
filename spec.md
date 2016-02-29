@@ -132,13 +132,13 @@ here. TODO: What exactly are these functions?
 
 # Node Info
 
-## Protocol
+## Transport Protocol
 
-A Protocol is a transport layer protocol directly below the Tox protocol
-itself. Tox supports two transport protocols: UDP and TCP. The binary
-representation of the Protocol is a single bit: 0 for UDP, 1 for TCP. If
-encoded as standalone value, the bit is stored in the least significant bit of
-a byte. If followed by other bit-packed data, it consumes exactly one bit.
+A Transport Protocol is a transport layer protocol directly below the Tox
+protocol itself. Tox supports two transport protocols: UDP and TCP. The binary
+representation of the Transport Protocol is a single bit: 0 for UDP, 1 for TCP.
+If encoded as standalone value, the bit is stored in the least significant bit
+of a byte. If followed by other bit-packed data, it consumes exactly one bit.
 
 The human-readable representation for UDP is `"UDP"` and for TCP is `"TCP"`.
 
@@ -150,8 +150,8 @@ IPv6 address, it is a Big Endian 128 bit unsigned integer (16 bytes). The
 binary representation of a Host Address is a 7 bit unsigned integer specifying
 the address family (2 for IPv4, 10 for IPv6), followed by the address itself.
 
-Thus, when packed together with the Protocol, the first bit of the packed byte
-is the protocol and the next 7 bits are the address family.
+Thus, when packed together with the Transport Protocol, the first bit of the
+packed byte is the protocol and the next 7 bits are the address family.
 
 ## Port Number
 
@@ -161,23 +161,23 @@ bit unsigned integer (2 bytes).
 ## Socket Address
 
 A Socket Address is a pair of Host Address and Port Number. Together with a
-Protocol, it is sufficient information to address a network port on any
-internet host.
+Transport Protocol, it is sufficient information to address a network port on
+any internet host.
 
 ## Node Info (packed node format)
 
-The Node Info data structure contains a Protocol, a Socket Address, and a
-Public Key. This is sufficient information to start communicating with that
-node. The binary representation of a Node Info is called the "packed node
+The Node Info data structure contains a Transport Protocol, a Socket Address,
+and a Public Key. This is sufficient information to start communicating with
+that node. The binary representation of a Node Info is called the "packed node
 format".
 
-Length      | Type           | Contents
------------ | -------------- | --------
-`1` bit     | Protocol       | UDP = 0, TCP = 1
-`7` bit     | Address Family | 2 = IPv4, 10 = IPv6
-`4 | 16`    | IP address     | 4 bytes if Address Family == IPv4, 16 bytes if IPv6
+Length      | Type               | Contents
+----------- | ------------------ | --------
+`1` bit     | Transport Protocol | UDP = 0, TCP = 1
+`7` bit     | Address Family     | 2 = IPv4, 10 = IPv6
+`4 | 16`    | IP address         | 4 bytes for IPv4, 16 bytes for IPv6
 `2`         | Port Number
-`32`        | Public Key     | (Node ID)
+`32`        | Public Key         | (Node ID)
 
 The packed node format is a way to store the node info in a small yet easy to
 parse format. To store more than one node, simply append another one to the
@@ -187,12 +187,12 @@ In the packed node format, the first byte (high bit protocol, lower 7 bits
 address family) are called the IP Type. The following table is informative and
 can be used to simplify the implementation.
 
-IP Type        | Protocol | Address Family
--------------- | -------- | --------------
-`2   (0x02)`   | UDP      | IPv4
-`10  (0x0a)`   | UDP      | IPv6
-`130 (0x82)`   | TCP      | IPv4
-`138 (0x8a)`   | TCP      | IPv6
+IP Type        | Transport Protocol | Address Family
+-------------- | ------------------ | --------------
+`2   (0x02)`   | UDP                | IPv4
+`10  (0x0a)`   | UDP                | IPv6
+`130 (0x82)`   | TCP                | IPv4
+`138 (0x8a)`   | TCP                | IPv6
 
 The number `130` is used for an IPv4 TCP relay and `138` is used to indicate an
 IPv6 TCP relay.
@@ -200,6 +200,61 @@ IPv6 TCP relay.
 The reason for these numbers is because the numbers on Linux for IPv4 and IPv6
 (the `AF_INET` and `AF_INET6` defines) are `2` and `10`. The TCP numbers are
 just the UDP numbers `+ 128`.
+
+# Protocol Packet
+
+A Protocol Packet is the top level Tox protocol element. All other packet types
+are wrapped in Protocol Packets. It consists of a Packet Kind and a payload.
+The binary representation of a Packet Kind is a single byte (8 bits). The
+payload is an arbitrary sequence of bytes.
+
+Length      | Contents
+----------- | --------
+`1`         | `uint8_t` packet kind
+`[0,]`      | Payload
+
+These top level packets can be transported in a number of ways, the most common
+way being over the network using UDP or TCP. The protocol itself does not
+prescribe transport methods, and an implementation is free to implement
+additional transports such as WebRTC, IRC, or pipes.
+
+In the remainder of the document, different kinds of Protocol Packet are
+specified with their packet kind and payload. The packet kind is not repeated
+in the payload description (TODO: actually it mostly is, but later it won't).
+
+Inside Protocol Packets payload, other packet types can specify additional
+packet kinds. E.g. inside a Crypto Data packet (`0x1b`), the
+[Messenger](#messenger) module defines its protocols for messaging, file
+transfers, etc. Top level Protocol Packets are themselves not encrypted, though
+their payload may be.
+
+## Packet Kind
+
+The following is an exhaustive list of top level packet kind names and their
+number. Their payload is specified in dedicated sections.
+
+Byte value | Packet Kind
+---------- | -----------
+`0x00`     | Ping Request
+`0x01`     | Ping Response
+`0x02`     | Nodes Request
+`0x04`     | Nodes Response
+`0x18`     | Cookie Request
+`0x19`     | Cookie Response
+`0x1a`     | Crypto Handshake
+`0x1b`     | Crypto Data
+`0x20`     | DHT Request
+`0x21`     | LAN Discovery
+`0x80`     | Onion Request 0
+`0x81`     | Onion Request 1
+`0x82`     | Onion Request 2
+`0x83`     | Announce Request
+`0x84`     | Announce Response
+`0x85`     | Onion Data Request
+`0x86`     | Onion Data Response
+`0x8c`     | Onion Response 3
+`0x8d`     | Onion Response 2
+`0x8e`     | Onion Response 1
 
 # DHT
 
@@ -622,7 +677,7 @@ say that this peer has been found.
 
 LAN discovery is how Tox handles and makes everything work well on LAN.
 
-# Messenger.txt
+# Messenger
 
 Messenger is the module at the top of all the other modules. It sits on top of
 `friend_connection` in the hierarchy of toxcore.
