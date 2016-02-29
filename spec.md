@@ -15,6 +15,13 @@ representation or a different one. The implementation is free to choose any
 in-memory representation of the specified types, as long as they can be encoded
 to and decoded from the specified protocol representation.
 
+Binary formats are specified in tables with length, type, and content
+descriptions. If applicable, specific enumeration types are used, so types may
+be self-explanatory in some cases. The length can be either a fixed number in
+bytes (e.g. `32`), a number in bits (e.g. `7` bit), a choice of lengths (e.g.
+`4 | 16`), or an inclusive range (e.g. `[0, 100]`). Open ranges are denoted
+`[n,]` to mean a minimum length of `n` with no specified maximum length.
+
 A String is a data structure used for human readable text. Strings are
 sequences of glyphs. A glyph consists of one non-zero-width unicode code point
 and zero or more zero-width unicode code points. The human-readable
@@ -27,9 +34,9 @@ Characters (U+240x) is not permitted without additional marker.
 
 # Crypto
 
-The Crypto module contains all the functions and data types related to crypto.
-This includes random number generation, encryption and decryption, key
-generation, operations on nonces and generating random nonces.
+The Crypto module contains all the functions and data types related to
+cryptography. This includes random number generation, encryption and
+decryption, key generation, operations on nonces and generating random nonces.
 
 ## Text
 
@@ -171,7 +178,7 @@ and a Public Key. This is sufficient information to start communicating with
 that node. The binary representation of a Node Info is called the "packed node
 format".
 
-Length      | Type               | Contents
+Length      | Type               | Contents
 ----------- | ------------------ | --------
 `1` bit     | Transport Protocol | UDP = 0, TCP = 1
 `7` bit     | Address Family     | 2 = IPv4, 10 = IPv6
@@ -187,7 +194,7 @@ In the packed node format, the first byte (high bit protocol, lower 7 bits
 address family) are called the IP Type. The following table is informative and
 can be used to simplify the implementation.
 
-IP Type        | Transport Protocol | Address Family
+IP Type        | Transport Protocol | Address Family
 -------------- | ------------------ | --------------
 `2   (0x02)`   | UDP                | IPv4
 `10  (0x0a)`   | UDP                | IPv6
@@ -208,10 +215,10 @@ are wrapped in Protocol Packets. It consists of a Packet Kind and a payload.
 The binary representation of a Packet Kind is a single byte (8 bits). The
 payload is an arbitrary sequence of bytes.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` packet kind
-`[0,]`      | Payload
+Length      | Type        | Contents
+----------- | ----------- | --------
+`1`         | Packet Kind | The packet kind identifier
+`[0,]`      | Bytes       | Payload
 
 These top level packets can be transported in a number of ways, the most common
 way being over the network using UDP or TCP. The protocol itself does not
@@ -231,7 +238,9 @@ their payload may be.
 ## Packet Kind
 
 The following is an exhaustive list of top level packet kind names and their
-number. Their payload is specified in dedicated sections.
+number. Their payload is specified in dedicated sections. Each section is named
+after the Packet Kind it describes followed by the byte value in parentheses,
+e.g. [Ping Request (0x00)](#ping-request-0x00).
 
 Byte value | Packet Kind
 ---------- | -----------
@@ -258,22 +267,26 @@ Byte value | Packet Kind
 
 # DHT
 
-The DHT is a self-organizing swarm of all peers in the Tox network. This module
-takes care of finding the IP and port of peers and establishing a route to them
-directly via UDP using [hole punching](#hole-punching) if necessary. The DHT
-only runs on UDP and so is only used if UDP works.
+The DHT is a self-organizing swarm of all peers in the Tox network. A peer in
+the Tox network is also called "node" or "Tox node". This module takes care of
+finding the IP and port of peers and establishing a route to them directly via
+UDP using [hole punching](#hole-punching) if necessary. The DHT only runs on
+UDP and so is only used if UDP works.
 
-Every peer in the Tox DHT has a temporary public key. This DHT public key acts
-as its address. This address is renewed every time the tox instance is closed
-or restarted. The DHT public key of a friend is found using the [onion](#onion)
-module. Once the DHT public key of a friend is known, the DHT is used to find
-them and connect directly to them via UDP.
+Every node in the Tox DHT has a temporary Key Pair called the DHT Key Pair
+consisting of the DHT Secret Key and the DHT Public Key. The DHT Public Key
+acts as the node address. The DHT Key Pair is renewed every time the tox
+instance is closed or restarted. The DHT public key of a friend is found using
+the [onion](#onion) module. Once the DHT public key of a friend is known, the
+DHT is used to find them and connect directly to them via UDP.
 
 ## Distance
 
 A Distance is a positive integer. Its human-readable representation is a
 base-16 number. Distance is a [monoid](https://en.wikipedia.org/wiki/Monoid)
-with the associative binary operator `+` and the identity element `0`.
+with the associative binary operator `+` and the identity element `0`. When we
+speak of a "close node", we mean that their Distance is small compared to the
+Distance to other nodes.
 
 The DHT needs a [metric](https://en.wikipedia.org/wiki/Metric_(mathematics)) to
 determine distance between two nodes. The Distance type is the result of this
@@ -330,96 +343,106 @@ public keys closest to X. Eventually the peer will find the peers in the DHT
 that are the closest to that peer and, if that peer is online, they will find
 them.
 
-## DHT Packets
+## DHT Packet
 
-The DHT wraps all of it's data inside a standard DHT packet type.
+The DHT Packet contains the sender's DHT Public Key, an encryption Nonce, and
+an encrypted payload. The payload is encrypted with the the DHT secret key of
+the sender, the DHT public key of the receiver, and the nonce that is sent
+along with the packet. DHT Packets are sent inside Protocol Packets with a
+varying Packet Kind.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` packet kind (see other packets)
-`32`        | Sender DHT Public Key
-`24`        | Random nonce
-variable    | Encrypted payload
+Length      | Type        | [Contents](#protocol-packet)
+----------- | ----------- | --------
+`32`        | Public Key  | Sender DHT Public Key
+`24`        | Nonce       | Random nonce
+`[16,]`     | Bytes       | Encrypted payload
 
-The payload is encrypted with the the nonce DHT secret key of the SENDER, and
-DHT public key of the RECEIVER.
+The encrypted payload is at least 16 bytes long, because the encryption
+includes a [MAC](https://en.wikipedia.org/wiki/Message_authentication_code) of
+16 bytes. A 16 byte payload would thus be the empty message. The DHT protocol
+never actually sends empty messages, so in reality the minimum size is 27 bytes
+for the [Ping Packet](#ping-service).
 
-The following packets use this format. The payloads for each are described in
-the subsections. I.e. all the following packet formats are encrypted and
-transported in the variable payload field of the standard DHT packet type.
+## RPC Services
 
-### Ping Packet (Request and response)
+A DHT RPC Service consists of a Request packet and a Response packet. A DHT RPC
+Packet contains a payload and a Request ID. This ID is a 64 bit unsigned
+integer that helps identify the response for a given request. The Request ID in
+the response packet must be equal to the Request ID in the request it is
+responding to.
 
-Packet type `0x00` for request, `0x01` for response.
+DHT RPC Packets are encrypted and transported within DHT Packets.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` packet kind (repeated from unencrypted part)
-`8`         | Ping ID
+Length      | Type        | [Contents](#dht-packet)
+----------- | ----------- | --------
+`[0,]`      | Bytes       | Payload
+`8`         | `uint64_t`  | Request ID
 
-The main DHT packet types are ping requests and responses which are used to
-check if another node is alive and get node packets which are used to query
-another DHT node for the up to 4 nodes they know that are the closest to the
-requested node.
+The minimum payload size is 0, but in reality the smallest sensible payload
+size is 1. Due to symmetric encryption, there is an isomorphism between the
+payload and its encrypted request/response packets. This would allow an
+attacker to send valid responses, as the encrypted response would be byte-wise
+equal to the encrypted request.
 
-The first byte of a ping request is a 0, followed by the DHT public key of the
-sender and the nonce. The encrypted payload contains a byte with a value of 00
-for a ping request, and 01 for a ping reply, followed by a 8 bytes of `ping_id`
-which must be the same in the request and reply.
+The Request ID provides some resistance against replay attacks. If there were
+no Request ID, it would be easy for an attacker to replay old responses and
+thus provide nodes with out-of-date information. The exact value of the Request
+ID will be specified later in the DHT section.
 
-The reason for the 1 byte value in the encrypted part is because the key used
-to encrypt both the request and response will be the same, due to how the
-encryption works this prevents a possible attacker from being able to create a
-ping response without needing to decrypt the ping request.
+### Ping Service
 
-The `ping_id` is used to make sure that the response received later is a
-response for this ping and not a replayed response from a previous ping,
-(without a `ping_id` an attacker would be able to make the sender believe that
-the node they are pinging is still up by just sending a generic ping response
-packet without investing decryption time/cycles.) Requiring the `ping_id` also
-requires the ping reply to follow a ping request.
+The Ping Service is used to periodically check if another node is still alive.
 
-The ping response follows the standard DHT packet. For a ping reply, the packet
-type is 01. The encrypted payload contains a single byte with a value of 01,
-followed by the 8 byte `ping_id` that was sent in the ping request. All ping
-requests received will be decrypted. If successfully decrypted a reply will be
-created and sent.
+A Ping Packet payload consists of just a boolean value saying whether it is a
+request or a response.
 
-### Get / Send Nodes Packet (Request and response)
+The one byte boolean inside the encrypted payload is added to prevent peers
+from creating a valid Ping Response from a Ping Request without decrypting the
+packet and encrypting a new one. Since symmetric encryption is used, the
+encrypted Ping Response would be byte-wise equal to the Ping Request without
+the discriminator byte.
 
-Get Nodes (Request) – packet type `0x02`:
+Length      | Type        | [Contents](#rpc-services)
+----------- | ----------- | --------
+`1`         | Bool        | Response flag: 0x00 for Request, 0x01 for Response
 
-Length      | Contents
------------ | --------
-`32`        | DHT Public Key
-`8`         | Ping ID
+#### Ping Request (0x00)
 
-Send Nodes (Response) – packet type `0x04`:
+A Ping Request is a Ping Packet with the response flag set to False. When a
+Ping Request is received and successfully decrypted, a Ping Response packet is
+created and sent back to the requestor.
 
-Length      | Contents
------------ | --------
-`1`         | Number of packed nodes (maximum 4)
-`[39, 204]` | Nodes in packed format
-`8`         | Ping ID
+#### Ping Response (0x01)
+
+A Ping Request is a Ping Packet with the response flag set to True.
+
+### Nodes Service
+
+The Nodes Service is used to query another DHT node for up to 4 nodes they know
+that are the closest to a requested node.
+
+#### Nodes Request (0x02)
+
+Length      | Type        | [Contents](#rpc-services)
+----------- | ----------- | --------
+`32`        | Public Key  | Requested DHT Public Key
+
+The DHT Public Key sent in the request is the one the sender is searching for.
+
+#### Nodes Response (0x04)
+
+Length      | Type        | [Contents](#rpc-services)
+----------- | ----------- | --------
+`1`         | Int         | Number of nodes in the response (maximum 4)
+`[39, 204]` | Node Infos  | Nodes in Packed Node Format
 
 An IPv4 node is 39 bytes, an IPv6 node is 51 bytes, so the maximum size is
 `51 * 4 = 204` bytes.
 
-Get Nodes and Send Nodes both follow use the DHT packet with the first byte of
-a get nodes request value of 0x02, and send nodes response value of 0x04.
+Nodes responses should contain the 4 closest nodes that the sender of the
+response has in their list of known nodes.
 
-The encrypted payload of the request is the DHT public key that the sender is
-searching for, or wants to find the nodes in the DHT closest to it. This is
-followed by an 8 byte `ping_id` which is there for the same reason as the one
-for the ping request.
-
-The encrypted payload of the response starts with the number of nodes in the
-response, followed by that number of nodes in a packed node format, (max of 4
-nodes). Send node responses should contain the 4 closest good (not timed out)
-nodes that the node has in their list of known nodes. Finally the same
-`ping_id` received in the request.
-
-### Packed node format
+#### Packed node format
 
 The DHT Send nodes uses the Packed Node Format.
 
@@ -488,7 +511,7 @@ alone and are probably not the best values. This also applies to the behavior
 which is simple and should be improved in order to make the network resist
 better to sybil attacks.
 
-### DHT Request packets
+## DHT Request packets
 
 Length      | Contents
 ----------- | --------
