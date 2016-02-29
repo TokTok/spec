@@ -1,11 +1,12 @@
 language: rust
 
 install:
-  - gem install mdl
+  - gem install mdl link-checker
 
 script:
   - make
   - make check
+  - check-links
 
 branches:
   only:
