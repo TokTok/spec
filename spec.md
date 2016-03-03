@@ -62,12 +62,12 @@ function](https://en.wikipedia.org/wiki/Identity_function).
 
 Tox uses four kinds of Crypto Numbers:
 
-Type         | Bits | Encoded byte size
------------- | ---- | -----------------
-Public Key   | 256  | 32
-Secret Key   | 256  | 32
-Combined Key | 256  | 32
-Nonce        | 192  | 24
+| Type         | Bits | Encoded byte size |
+|:-------------|:-----|:------------------|
+| Public Key   | 256  | 32                |
+| Secret Key   | 256  | 32                |
+| Combined Key | 256  | 32                |
+| Nonce        | 192  | 24                |
 
 ### Key Pair
 
@@ -149,7 +149,7 @@ representation of the Transport Protocol is a single bit: 0 for UDP, 1 for TCP.
 If encoded as standalone value, the bit is stored in the least significant bit
 of a byte. If followed by other bit-packed data, it consumes exactly one bit.
 
-The human-readable representation for UDP is `"UDP"` and for TCP is `"TCP"`.
+The human-readable representation for UDP is `UDP` and for TCP is `TCP`.
 
 ## Host Address
 
@@ -180,13 +180,13 @@ and a Public Key. This is sufficient information to start communicating with
 that node. The binary representation of a Node Info is called the "packed node
 format".
 
-Length      | Type               | Contents
------------ | ------------------ | --------
-`1` bit     | Transport Protocol | UDP = 0, TCP = 1
-`7` bit     | Address Family     | 2 = IPv4, 10 = IPv6
-`4 | 16`    | IP address         | 4 bytes for IPv4, 16 bytes for IPv6
-`2`         | Port Number
-`32`        | Public Key         | (Node ID)
+| Length   | Type               | Contents                            |
+|:---------|:-------------------|:------------------------------------|
+| `1` bit  | Transport Protocol | UDP = 0, TCP = 1                    |
+| `7` bit  | Address Family     | 2 = IPv4, 10 = IPv6                 |
+| `4 | 16` | IP address         | 4 bytes for IPv4, 16 bytes for IPv6 |
+| `2`      | Port Number        | Port number                         |
+| `32`     | Public Key         | Node ID                             |
 
 The packed node format is a way to store the node info in a small yet easy to
 parse format. To store more than one node, simply append another one to the
@@ -196,12 +196,12 @@ In the packed node format, the first byte (high bit protocol, lower 7 bits
 address family) are called the IP Type. The following table is informative and
 can be used to simplify the implementation.
 
-IP Type        | Transport Protocol | Address Family
--------------- | ------------------ | --------------
-`2   (0x02)`   | UDP                | IPv4
-`10  (0x0a)`   | UDP                | IPv6
-`130 (0x82)`   | TCP                | IPv4
-`138 (0x8a)`   | TCP                | IPv6
+| IP Type      | Transport Protocol | Address Family |
+|:-------------|:-------------------|:---------------|
+| `2 (0x02)`   | UDP                | IPv4           |
+| `10 (0x0a)`  | UDP                | IPv6           |
+| `130 (0x82)` | TCP                | IPv4           |
+| `138 (0x8a)` | TCP                | IPv6           |
 
 The number `130` is used for an IPv4 TCP relay and `138` is used to indicate an
 IPv6 TCP relay.
@@ -217,10 +217,10 @@ are wrapped in Protocol Packets. It consists of a Packet Kind and a payload.
 The binary representation of a Packet Kind is a single byte (8 bits). The
 payload is an arbitrary sequence of bytes.
 
-Length      | Type        | Contents
------------ | ----------- | --------
-`1`         | Packet Kind | The packet kind identifier
-`[0,]`      | Bytes       | Payload
+| Length | Type        | Contents                   |
+|:-------|:------------|:---------------------------|
+| `1`    | Packet Kind | The packet kind identifier |
+| `[0,]` | Bytes       | Payload                    |
 
 These top level packets can be transported in a number of ways, the most common
 way being over the network using UDP or TCP. The protocol itself does not
@@ -244,28 +244,28 @@ number. Their payload is specified in dedicated sections. Each section is named
 after the Packet Kind it describes followed by the byte value in parentheses,
 e.g. [Ping Request (0x00)](#ping-request-0x00).
 
-Byte value | Packet Kind
----------- | -----------
-`0x00`     | Ping Request
-`0x01`     | Ping Response
-`0x02`     | Nodes Request
-`0x04`     | Nodes Response
-`0x18`     | Cookie Request
-`0x19`     | Cookie Response
-`0x1a`     | Crypto Handshake
-`0x1b`     | Crypto Data
-`0x20`     | DHT Request
-`0x21`     | LAN Discovery
-`0x80`     | Onion Request 0
-`0x81`     | Onion Request 1
-`0x82`     | Onion Request 2
-`0x83`     | Announce Request
-`0x84`     | Announce Response
-`0x85`     | Onion Data Request
-`0x86`     | Onion Data Response
-`0x8c`     | Onion Response 3
-`0x8d`     | Onion Response 2
-`0x8e`     | Onion Response 1
+| Byte value | Packet Kind         |
+|:-----------|:--------------------|
+| `0x00`     | Ping Request        |
+| `0x01`     | Ping Response       |
+| `0x02`     | Nodes Request       |
+| `0x04`     | Nodes Response      |
+| `0x18`     | Cookie Request      |
+| `0x19`     | Cookie Response     |
+| `0x1a`     | Crypto Handshake    |
+| `0x1b`     | Crypto Data         |
+| `0x20`     | DHT Request         |
+| `0x21`     | LAN Discovery       |
+| `0x80`     | Onion Request 0     |
+| `0x81`     | Onion Request 1     |
+| `0x82`     | Onion Request 2     |
+| `0x83`     | Announce Request    |
+| `0x84`     | Announce Response   |
+| `0x85`     | Onion Data Request  |
+| `0x86`     | Onion Data Response |
+| `0x8c`     | Onion Response 3    |
+| `0x8d`     | Onion Response 2    |
+| `0x8e`     | Onion Response 1    |
 
 # DHT
 
@@ -311,21 +311,29 @@ won't influence that decision.
 
 The XOR metric `d` satisfies the required conditions:
 
-1. Non-negativity `d(x, y) >= 0`: Since public keys are Crypto Numbers, which
-   are by definition positive, their XOR is necessarily positive.
-1. Identity of indiscernibles `d(x, y) == 0` iff `x == y`: The XOR of two
-   integers is zero iff they are equal.
-1. Symmetry `d(x, y) == d(y, x)`: XOR is a symmetric operation.
-1. Subadditivity `d(x, z) <= d(x, y) + d(y, z)`: TODO.
+1.  Non-negativity `d(x, y) >= 0`: Since public keys are Crypto Numbers, which
+    are by definition positive, their XOR is necessarily positive.
+
+2.  Identity of indiscernibles `d(x, y) == 0` iff `x == y`: The XOR of two
+    integers is zero iff they are equal.
+
+3.  Symmetry `d(x, y) == d(y, x)`: XOR is a symmetric operation.
+
+4.  Subadditivity `d(x, z) <= d(x, y) + d(y, z)`: TODO.
 
 Example: Given three nodes with keys 2, 5, and 6:
 
-- `2 XOR 5 = 7`
-- `2 XOR 6 = 4`
-- `5 XOR 2 = 7`
-- `5 XOR 6 = 3`
-- `6 XOR 2 = 4`
-- `6 XOR 5 = 3`
+-   `2 XOR 5 = 7`
+
+-   `2 XOR 6 = 4`
+
+-   `5 XOR 2 = 7`
+
+-   `5 XOR 6 = 3`
+
+-   `6 XOR 2 = 4`
+
+-   `6 XOR 5 = 3`
 
 The closest node from both 2 and 5 is 6. The closest node from 6 is 5 with
 distance 3. This example shows that a key that is close in terms of integer
@@ -352,11 +360,11 @@ the sender, the DHT public key of the receiver, and the nonce that is sent
 along with the packet. DHT Packets are sent inside Protocol Packets with a
 varying Packet Kind.
 
-Length      | Type        | [Contents](#protocol-packet)
------------ | ----------- | --------
-`32`        | Public Key  | Sender DHT Public Key
-`24`        | Nonce       | Random nonce
-`[16,]`     | Bytes       | Encrypted payload
+| Length  | Type       | [Contents](#protocol-packet) |
+|:--------|:-----------|:-----------------------------|
+| `32`    | Public Key | Sender DHT Public Key        |
+| `24`    | Nonce      | Random nonce                 |
+| `[16,]` | Bytes      | Encrypted payload            |
 
 The encrypted payload is at least 16 bytes long, because the encryption
 includes a [MAC](https://en.wikipedia.org/wiki/Message_authentication_code) of
@@ -374,10 +382,10 @@ responding to.
 
 DHT RPC Packets are encrypted and transported within DHT Packets.
 
-Length      | Type        | [Contents](#dht-packet)
------------ | ----------- | --------
-`[0,]`      | Bytes       | Payload
-`8`         | `uint64_t`  | Request ID
+| Length | Type       | [Contents](#dht-packet) |
+|:-------|:-----------|:------------------------|
+| `[0,]` | Bytes      | Payload                 |
+| `8`    | `uint64_t` | Request ID              |
 
 The minimum payload size is 0, but in reality the smallest sensible payload
 size is 1. Since the same symmetric key is used in both communication
@@ -407,9 +415,9 @@ packet and encrypting a new one. Since symmetric encryption is used, the
 encrypted Ping Response would be byte-wise equal to the Ping Request without
 the discriminator byte.
 
-Length      | Type        | [Contents](#rpc-services)
------------ | ----------- | --------
-`1`         | Bool        | Response flag: 0x00 for Request, 0x01 for Response
+| Length | Type | [Contents](#rpc-services)                          |
+|:-------|:-----|:---------------------------------------------------|
+| `1`    | Bool | Response flag: 0x00 for Request, 0x01 for Response |
 
 #### Ping Request (0x00)
 
@@ -428,18 +436,18 @@ that are the closest to a requested node.
 
 #### Nodes Request (0x02)
 
-Length      | Type        | [Contents](#rpc-services)
------------ | ----------- | --------
-`32`        | Public Key  | Requested DHT Public Key
+| Length | Type       | [Contents](#rpc-services) |
+|:-------|:-----------|:--------------------------|
+| `32`   | Public Key |  Requested DHT Public Key |
 
 The DHT Public Key sent in the request is the one the sender is searching for.
 
 #### Nodes Response (0x04)
 
-Length      | Type        | [Contents](#rpc-services)
------------ | ----------- | --------
-`1`         | Int         | Number of nodes in the response (maximum 4)
-`[39, 204]` | Node Infos  | Nodes in Packed Node Format
+| Length      | Type       | [Contents](#rpc-services)                    |
+|:------------|:-----------|:---------------------------------------------|
+| `1`         | Int        |  Number of nodes in the response (maximum 4) |
+| `[39, 204]` | Node Infos | Nodes in Packed Node Format                  |
 
 An IPv4 node is 39 bytes, an IPv6 node is 51 bytes, so the maximum size is
 `51 * 4 = 204` bytes.
@@ -518,13 +526,13 @@ better to sybil attacks.
 
 ## DHT Request packets
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x20)
-`32`        | receiver's DHT public key
-`32`        | sender's DHT public key
-`24`        | nonce
-`?`         | encrypted message
+| Length | Contents                  |
+|:-------|:--------------------------|
+| `1`    | `uint8_t` (0x20)          |
+| `32`   | receiver's DHT public key |
+| `32`   | sender's DHT public key   |
+| `24`   | nonce                     |
+| `?`    | encrypted message         |
 
 DHT Request packets are packets that can be sent across one DHT node to one
 that they know. They are used to send encrypted data to friends that we are not
@@ -537,7 +545,7 @@ that DHT public key (if it's in their list of close nodes). If it isn't, they
 will drop the packet. If it is they will resend the exact packet to that DHT
 node.
 
-The encrypted message is encrypted using the reciever's DHT Public key, the
+The encrypted message is encrypted using the receiver's DHT Public key, the
 sender's DHT private key and the nonce (randomly generated 24 bytes).
 
 DHT request packets are used for DHTPK packets (see onion) and NAT ping
@@ -552,19 +560,19 @@ is online and ready to do the hole punching.
 
 #### NAT ping request
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0xfe)
-`1`         | `uint8_t` (0x00)
-`8`         | `uint64_t` random number
+| Length | Contents                 |
+|:-------|:-------------------------|
+| `1`    | `uint8_t` (0xfe)         |
+| `1`    | `uint8_t` (0x00)         |
+| `8`    | `uint64_t` random number |
 
 #### NAT ping response
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0xfe)
-`1`         | `uint8_t` (0x01)
-`8`         | `uint64_t` random number (the same that was received in request)
+| Length | Contents                                                         |
+|:-------|:-----------------------------------------------------------------|
+| `1`    | `uint8_t` (0xfe)                                                 |
+| `1`    | `uint8_t` (0x01)                                                 |
+| `8`    | `uint64_t` random number (the same that was received in request) |
 
 ## Hole punching
 
@@ -677,10 +685,10 @@ Tox UDP port (33445).
 
 The LAN Discovery packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (33)
-`32`        | DHT public key
+| Length | Contents       |
+|:-------|:---------------|
+| `1`    | `uint8_t` (33) |
+| `32`   | DHT public key |
 
 LAN Discovery packets contain the DHT public key of the sender. When a LAN
 Discovery packet is received, a DHT get nodes packet will be sent to the sender
@@ -711,11 +719,12 @@ Messenger is the module at the top of all the other modules. It sits on top of
 `friend_connection` in the hierarchy of toxcore.
 
 Messenger takes care of sending and receiving messages using the connection
-provided by `friend_connection`. The module provides a way for friends to connect
-and makes it usable as an instant messenger. For example, Messenger lets users
-set a nickname and status message which it then transmits to friends when they
-are online. It also allows users to send messages to friends and builds an
-instant messenging system on top of the lower level `friend_connection` module.
+provided by `friend_connection`. The module provides a way for friends to
+connect and makes it usable as an instant messenger. For example, Messenger
+lets users set a nickname and status message which it then transmits to friends
+when they are online. It also allows users to send messages to friends and
+builds an instant messenging system on top of the lower level
+`friend_connection` module.
 
 Messenger offers two methods to add a friend. The first way is to add a friend
 with only their long term public key, this is used when a friend needs to be
@@ -723,14 +732,14 @@ added but for some reason a friend request should not be sent. The friend
 should only be added. This method is most commonly used to accept friend
 requests but could also be used in other ways. If two friends add each other
 using this function they will connect to each other. Adding a friend using this
-method just adds the friend to `friend_connection` and creates a new friend entry
-in Messenger for the friend.
+method just adds the friend to `friend_connection` and creates a new friend
+entry in Messenger for the friend.
 
 The Tox ID is used to identify peers so that they can be added as friends in
 Tox. In order to add a friend, a Tox user must have the friend's Tox ID.The Tox
 ID contains the long term public key of the peer (32 bytes) followed by the 4
-byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The method
-of sending the Tox ID to others is up to the user and the client but the
+byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The
+method of sending the Tox ID to others is up to the user and the client but the
 recommended way is to encode it in hexadecimal format and have the user
 manually send it to the friend using another program.
 
@@ -738,11 +747,11 @@ Tox ID:
 
 ![Tox ID](img/tox-id.png)
 
-Length      | Contents
------------ | --------
-`32`        | long term public key
-`4`         | nospam
-`2`         | checksum
+| Length | Contents             |
+|:-------|:---------------------|
+| `32`   | long term public key |
+| `4`    | nospam               |
+| `2`    | checksum             |
 
 The checksum is calculated by XORing the first two bytes of the ID with the
 next two bytes, then the next two bytes until all the 36 bytes have been XORed
@@ -775,19 +784,19 @@ the friend.
 
 Should Messenger need to check whether any of the non lossy packets in the
 following list were received by the friend, for example to implement receipts
-for text messages, `net_crypto` can be used. The `net_crypto` packet number, used
-to send the packets, should be noted and then `net_crypto` checked later to see
-if the bottom of the send array is after this packet number. If it is, then the
-friend has received them. Note that `net_crypto` packet numbers could overflow
-after a long time, so checks should happen within 2^32 `net_crypto` packets sent
-with the same friend connection.
+for text messages, `net_crypto` can be used. The `net_crypto` packet number,
+used to send the packets, should be noted and then `net_crypto` checked later
+to see if the bottom of the send array is after this packet number. If it is,
+then the friend has received them. Note that `net_crypto` packet numbers could
+overflow after a long time, so checks should happen within 2\*\*32 `net_crypto`
+packets sent with the same friend connection.
 
 Message receipts for action messages and normal text messages are implemented
-by adding the `net_crypto` packet number of each message, along with the receipt
-number, to the top of a linked list that each friend has as they are sent.
-Every Messenger loop, the entries are read from the bottom and entries are
-removed and passed to the client until an entry that refers to a packet not yet
-received by the other is reached, when this happens it stops.
+by adding the `net_crypto` packet number of each message, along with the
+receipt number, to the top of a linked list that each friend has as they are
+sent. Every Messenger loop, the entries are read from the bottom and entries
+are removed and passed to the client until an entry that refers to a packet not
+yet received by the other is reached, when this happens it stops.
 
 List of Messenger packets:
 
@@ -795,9 +804,9 @@ List of Messenger packets:
 
 length: 1 byte
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x18)
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x18) |
 
 Sent to a friend when a connection is established to tell them to mark us as
 online in their friends list. This packet and the OFFLINE packet are necessary
@@ -812,9 +821,9 @@ On receiving this packet, Messenger will show the peer as being online.
 
 length: 1 byte
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x19)
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x19) |
 
 Sent to a friend when deleting the friend. Prevents a deleted friend from
 seeing us as online if we are connected to them because of a group chat.
@@ -825,12 +834,10 @@ On receiving this packet, Messenger will show this peer as offline.
 
 length: 1 byte to 129 bytes.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x30)
-`[0, 128]`  | Nickname as a UTF8 byte string
-
-`[N, M]` means minimum length `N`, maximum length `M` (inclusive range).
+| Length     | Contents                       |
+|:-----------|:-------------------------------|
+| `1`        | `uint8_t` (0x30)               |
+| `[0, 128]` | Nickname as a UTF8 byte string |
 
 Used to send the nickname of the peer to others. This packet should be sent
 every time to each friend every time they come online and each time the
@@ -840,10 +847,10 @@ nickname is changed.
 
 length: 1 byte to 1008 bytes.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x31)
-`[0, 1007]` | Status message as a UTF8 byte string
+| Length      | Contents                             |
+|:------------|:-------------------------------------|
+| `1`         |  `uint8_t` (0x31)                    |
+| `[0, 1007]` | Status message as a UTF8 byte string |
 
 Used to send the status message of the peer to others. This packet should be
 sent every time to each friend every time they come online and each time the
@@ -853,10 +860,10 @@ status message is changed.
 
 length: 2 bytes
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x32)
-`1`         | `uint8_t` status (0 = online, 1 = away, 2 = busy)
+| Length | Contents                                          |
+|:-------|:--------------------------------------------------|
+| `1`    | `uint8_t` (0x32)                                  |
+| `1`    | `uint8_t` status (0 = online, 1 = away, 2 = busy) |
 
 Used to send the user status of the peer to others. This packet should be sent
 every time to each friend every time they come online and each time the user
@@ -866,37 +873,37 @@ status is changed.
 
 length: 2 bytes
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x33)
-`1`         | `uint8_t` typing status (0 = not typing, 1 = typing)
+| Length | Contents                                             |
+|:-------|:-----------------------------------------------------|
+| `1`    | `uint8_t` (0x33)                                     |
+| `1`    | `uint8_t` typing status (0 = not typing, 1 = typing) |
 
 Used to tell a friend whether the user is currently typing or not.
 
 ## `MESSAGE`
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x40)
-`[0, 1372]` | Message as a UTF8 byte string
+| Length      | Contents                      |
+|:------------|:------------------------------|
+| `1`         | `uint8_t` (0x40)              |
+| `[0, 1372]` | Message as a UTF8 byte string |
 
 Used to send a normal text message to the friend.
 
 ## `ACTION`
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x41)
-`[0, 1372]` | Action message as a UTF8 byte string
+| Length      | Contents                             |
+|:------------|:-------------------------------------|
+| `1`         | `uint8_t` (0x41)                     |
+| `[0, 1372]` | Action message as a UTF8 byte string |
 
 Used to send an action message (like an IRC action) to the friend.
 
 ## `MSI`
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x45)
-`?`         | data
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x45) |
+| `?`    | data             |
 
 Reserved for Tox AV usage.
 
@@ -904,31 +911,36 @@ Reserved for Tox AV usage.
 
 ### `FILE_SENDREQUEST`
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x50)
-`1`         | `uint8_t` file number
-`4`         | `uint32_t` file type
-`8`         | `uint64_t` file size
-`32`        | file id (32 bytes)
-`[0, 255]`  | filename as a UTF8 byte string
+| Length     | Contents                       |
+|:-----------|:-------------------------------|
+| `1`        | `uint8_t` (0x50)               |
+| `1`        | `uint8_t` file number          |
+| `4`        | `uint32_t` file type           |
+| `8`        | `uint64_t` file size           |
+| `32`       | file id (32 bytes)             |
+| `[0, 255]` | filename as a UTF8 byte string |
 
 Note that file type and file size are sent in big endian/network byte format.
 
 ### `FILE_CONTROL`
 
-length: 4 bytes if `control_type` isn't seek. 8 bytes if `control_type` is seek.
+length: 4 bytes if `control_type` isn't seek. 8 bytes if `control_type` is
+seek.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x51)
-`1`         | `uint8_t` `send_receive`
-`1`         | `uint8_t` file number
-`1`         | `uint8_t` `control_type` (0 = accept, 1 = pause, 2 = kill, 3 = seek)
-`8`         | `uint64_t` seek parameter (only included when `control_type` is seek)
+| Length | Contents                  |
+|:-------|:--------------------------|
+| `1`    | `uint8_t` (0x51)          |
+| `1`    | `uint8_t` `send_receive`  |
+| `1`    | `uint8_t` file number     |
+| `1`    | `uint8_t` `control_type`  |
+| `8`    | `uint64_t` seek parameter |
 
 `send_receive` is 0 if the control targets a file being sent (by the peer
 sending the file control), and 1 if it targets a file being received.
+
+`control_type` can be one of: 0 = accept, 1 = pause, 2 = kill, 3 = seek.
+
+The seek parameter is only included when `control_type` is seek (3).
 
 Note that if it is included the seek parameter will be sent in big
 endian/network byte format.
@@ -937,11 +949,11 @@ endian/network byte format.
 
 length: 2 to 1373 bytes.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x52)
-`1`         | `uint8_t` file number
-`[0, 1371]` | file data piece
+| Length      | Contents              |
+|:------------|:----------------------|
+| `1`         | `uint8_t` (0x52)      |
+| `1`         | `uint8_t` file number |
+| `[0, 1371]` | file data piece       |
 
 Files are transferred in Tox using File transfers.
 
@@ -962,8 +974,8 @@ As file numbers are used to identify the file transfer, the Tox instance must
 make sure to use a file number that isn't used for another outgoing file
 transfer to that same friend when creating a new outgoing file transfer. File
 numbers are chosen by the file sender and stay unchanged for the entire
-duration of the file transfer. The file number is used by both `FILE_CONTROL` and
-`FILE_DATA` packets to identify which file transfer these packets are for.
+duration of the file transfer. The file number is used by both `FILE_CONTROL`
+and `FILE_DATA` packets to identify which file transfer these packets are for.
 
 The second part of the file transfer request is the file type. This is simply a
 number that identifies the type of file. for example, tox.h defines the file
@@ -974,10 +986,10 @@ by the Tox client that creates the file transfers and send to the friend
 untouched.
 
 The file size indicates the total size of the file that will be transfered. A
-file size of `UINT64_MAX` (maximum value in a `uint64_t`) means that the size of
-the file is undetermined or unknown. For example if someone wanted to use Tox
-file transfers to stream data they would set the file size to `UINT64_MAX`. A
-file size of 0 is valid and behaves exactly like a normal file transfer.
+file size of `UINT64_MAX` (maximum value in a `uint64_t`) means that the size
+of the file is undetermined or unknown. For example if someone wanted to use
+Tox file transfers to stream data they would set the file size to `UINT64_MAX`.
+A file size of 0 is valid and behaves exactly like a normal file transfer.
 
 The file id is 32 bytes that can be used to uniquely identify the file
 transfer. For example, avatar transfers use it as the hash of the avatar so
@@ -994,18 +1006,18 @@ When a `FILE_SENDREQUEST` packet is received, the implementation validates and
 sends the info to the Tox client which decides whether they should accept the
 file transfer or not.
 
-To refuse or cancel a file transfer, they will send a `FILE_CONTROL` packet with
-`control_type` 2 (kill).
+To refuse or cancel a file transfer, they will send a `FILE_CONTROL` packet
+with `control_type` 2 (kill).
 
 `FILE_CONTROL` packets are used to control the file transfer. `FILE_CONTROL`
 packets are used to accept/unpause, pause, kill/cancel and seek file transfers.
 The `control_type` parameter denotes what the file control packet does.
 
-The `send_receive` and file number are used to identify a specific file transfer.
-Since file numbers for outgoing and incoming files are not related to each
-other, the `send_receive` parameter is used to identify if the file number
-belongs to files being sent or files being received. If `send_receive` is 0, the
-file number corresponds to a file being sent by the user sending the file
+The `send_receive` and file number are used to identify a specific file
+transfer. Since file numbers for outgoing and incoming files are not related to
+each other, the `send_receive` parameter is used to identify if the file number
+belongs to files being sent or files being received. If `send_receive` is 0,
+the file number corresponds to a file being sent by the user sending the file
 control packet. If `send_receive` is 1, it corresponds to a file being received
 by the user sending the file control packet.
 
@@ -1019,8 +1031,8 @@ If one party pauses a file transfer, that party must be the one to unpause it.
 Should both sides pause a file transfer, both sides must unpause it before the
 file can be resumed. For example, if the sender pauses the file transfer, the
 receiver must not be able to unpause it. To unpause a file transfer,
-`control_type` 0 is used. files can only be paused when they are in progress and
-have been accepted.
+`control_type` 0 is used. Files can only be paused when they are in progress
+and have been accepted.
 
 `control_type` 2 is used to kill, cancel or refuse a file transfer. When a
 `FILE_CONTROL` is received, the targeted file transfer is considered dead, will
@@ -1028,23 +1040,23 @@ immediately be wiped and its file number can be reused. The peer sending the
 `FILE_CONTROL` must also wipe the targeted file transfer from their side. This
 control type can be used by both sides of the transfer at any time.
 
-`control_type` 3, the seek control type is used to tell the sender of the file to
-start sending from a different index in the file than 0. It can only be used
+`control_type` 3, the seek control type is used to tell the sender of the file
+to start sending from a different index in the file than 0. It can only be used
 right after receiving a `FILE_SENDREQUEST` packet and before accepting the file
-by sending a `FILE_CONTROL` with `control_type` 0. When this `control_type` is used,
-an extra 8 byte number in big endian format is appended to the `FILE_CONTROL`
-that is not present with other control types. This number indicates the index
-in bytes from the beginning of the file at which the file sender should start
-sending the file. The goal of this control type is to ensure that files can be
-resumed across core restarts. Tox clients can know if they have received a part
-of a file by using the file id and then using this packet to tell the other
-side to start sending from the last received byte. If the seek position is
-bigger or equal to the size of the file, the seek packet is invalid and the one
-receiving it will discard it.
+by sending a `FILE_CONTROL` with `control_type` 0. When this `control_type` is
+used, an extra 8 byte number in big endian format is appended to the
+`FILE_CONTROL` that is not present with other control types. This number
+indicates the index in bytes from the beginning of the file at which the file
+sender should start sending the file. The goal of this control type is to
+ensure that files can be resumed across core restarts. Tox clients can know if
+they have received a part of a file by using the file id and then using this
+packet to tell the other side to start sending from the last received byte. If
+the seek position is bigger or equal to the size of the file, the seek packet
+is invalid and the one receiving it will discard it.
 
 To accept a file Tox will therefore send a seek packet, if it is needed, and
-then send a `FILE_CONTROL` packet with `control_type` 0 (accept) to tell the file
-sender that the file was accepted.
+then send a `FILE_CONTROL` packet with `control_type` 0 (accept) to tell the
+file sender that the file was accepted.
 
 Once the file transfer is accepted, the file sender will start sending file
 data in sequential chunks from the beginning of the file (or the position from
@@ -1055,25 +1067,25 @@ file transfer that the file chunks belong to. The receiver assumes that the
 file transfer is over as soon as a chunk with the file data size not equal to
 the maximum size (1371 bytes) is received. This is how the sender tells the
 receiver that the file transfer is complete in file transfers where the size of
-the file is unknown (set to `UINT64_MAX`). The receiver also assumes that if the
-amount of received data equals to the file size received in the
+the file is unknown (set to `UINT64_MAX`). The receiver also assumes that if
+the amount of received data equals to the file size received in the
 `FILE_SENDREQUEST`, the file sending is finished and has been successfully
 received. Immediately after this occurs, the receiver frees up the file number
 so that a new incoming file transfer can use that file number. The
 implementation should discard any extra data received which is larger than the
 file size received at the beginning.
 
-In 0 filesize file transfers, the sender will send one `FILE_DATA` packet with a
-file data size of 0.
+In 0 filesize file transfers, the sender will send one `FILE_DATA` packet with
+a file data size of 0.
 
 The sender will know if the receiver has received the file successfully by
-checking if the friend has received the last `FILE_DATA` packet sent (containing
-the last chunk of the file). `Net_crypto` can be used to check whether packets
-sent through it have been received by storing the packet number of the sent
-packet and verifying later in `net_crypto` to see whether it was received or not.
-As soon as `net_crypto` says the other received the packet, the file transfer is
-considered successful, wiped and the file number can be reused to send new
-files.
+checking if the friend has received the last `FILE_DATA` packet sent
+(containing the last chunk of the file). `Net_crypto` can be used to check
+whether packets sent through it have been received by storing the packet number
+of the sent packet and verifying later in `net_crypto` to see whether it was
+received or not. As soon as `net_crypto` says the other received the packet,
+the file transfer is considered successful, wiped and the file number can be
+reused to send new files.
 
 `FILE_DATA` packets should be sent as fast as the `net_crypto` connection can
 handle it respecting its congestion control.
@@ -1086,13 +1098,13 @@ the connection to the friend because of a bad internet connection.
 
 ## Group Chat Related Packets
 
-Packet ID | Packet Name
---------- | -----------
-0x60      | `INVITE_GROUPCHAT`
-0x61      | `ONLINE_PACKET`
-0x62      | `DIRECT_GROUPCHAT`
-0x63      | `MESSAGE_GROUPCHAT`
-0xC7      | `LOSSY_GROUPCHAT`
+| Packet ID | Packet Name         |
+|:----------|:--------------------|
+| 0x60      | `INVITE_GROUPCHAT`  |
+| 0x61      | `ONLINE_PACKET`     |
+| 0x62      | `DIRECT_GROUPCHAT`  |
+| 0x63      | `MESSAGE_GROUPCHAT` |
+| 0xC7      | `LOSSY_GROUPCHAT`   |
 
 Messenger also takes care of saving the friends list and other friend
 information so that it's possible to close and start toxcore while keeping all
@@ -1261,8 +1273,8 @@ relay data to any peers).
 to sleep. TCP connections to other peers may be put to sleep if the connection
 to the peer establishes itself with UDP after the connection is established
 with TCP. UDP is the method preferred by `net_crypto` to communicate with other
-peers. In order to keep track of the relays which were used to connect with
-the other peer in case the UDP connection fails, they are saved by
+peers. In order to keep track of the relays which were used to connect with the
+other peer in case the UDP connection fails, they are saved by
 `TCP_connections` when the connection is put to sleep. Any relays which were
 only used by this redundant connection are saved then disconnected from. If the
 connection is awakened, the relays are reconnected to and the connection is
@@ -1290,9 +1302,9 @@ connection, TCP OOB (out of band) packets will be used to send data instead of
 data packets. TCP OOB packets are used in this case since the relay most likely
 has the peer connected but it has not sent a routing request to connect to us.
 
-`TCP_connections` is used as the bridge between individual `TCP_client` instances
-and `net_crypto`, or the bridge between individual connections and something
-that requires an interface that looks like one connection.
+`TCP_connections` is used as the bridge between individual `TCP_client`
+instances and `net_crypto`, or the bridge between individual connections and
+something that requires an interface that looks like one connection.
 
 # TCP server
 
@@ -1348,19 +1360,19 @@ clients.
 To establish a secure connection with a TCP server send the following 128 bytes
 of data or handshake packet to the server:
 
-Length      | Contents
------------ | --------
-`32`        | DHT public key of client
-`24`        | Nonce for the encrypted data
-`72`        | Payload (plus MAC)
+| Length | Contents                     |
+|:-------|:-----------------------------|
+| `32`   | DHT public key of client     |
+| `24`   | Nonce for the encrypted data |
+| `72`   | Payload (plus MAC)           |
 
 Payload is encrypted with the DHT private key of the client and public key of
 the server and the nonce:
 
-Length      | Contents
------------ | --------
-`32`        | Public key
-`24`        | Base nonce
+| Length | Contents   |
+|:-------|:-----------|
+| `32`   | Public key |
+| `24`   | Base nonce |
 
 The base nonce is the one TCP client wants the TCP server to use to encrypt the
 packets sent to the TCP client.
@@ -1377,18 +1389,18 @@ the TCP client.
 If the server decrypts successfully the encrypted data in the handshake packet
 and responds with the following handshake response of length 96 bytes:
 
-Length      | Contents
------------ | --------
-`24`        | Nonce for the encrypted data
-`72`        | Payload (plus MAC)
+| Length | Contents                     |
+|:-------|:-----------------------------|
+| `24`   | Nonce for the encrypted data |
+| `72`   | Payload (plus MAC)           |
 
 Payload is encrypted with the private key of the server and the DHT public key
 of the client and the nonce:
 
-Length      | Contents
------------ | --------
-`32`        | Public key
-`24`        | Base nonce
+| Length | Contents   |
+|:-------|:-----------|
+| `32`   | Public key |
+| `24`   | Base nonce |
 
 The base nonce is the one the TCP server wants the TCP client to use to encrypt
 the packets sent to the TCP server.
@@ -1439,10 +1451,10 @@ different peers will have the same public key so this is the correct behavior.
 
 Encrypted data packets look like this to outsiders:
 
-Length      | Contents
------------ | --------
-`2`         | `uint16_t` length of data
-variable    | encrypted data
+| Length   | Contents                  |
+|:---------|:--------------------------|
+| `2`      | `uint16_t` length of data |
+| variable | encrypted data            |
 
 In a TCP stream they would look like:
 `[[length][data]][[length][data]][[length][data]]...`.
@@ -1453,14 +1465,12 @@ then sent to the other in the handshake and sent to the other. They are then
 used like the next diagram shows to generate a shared key which is equal on
 both sides.
 
-```text
-Client:                                     Server:
-generate_shared_key(                        generate_shared_key(
-[temp connection public key of server],     [temp connection public key of client],
-[temp connection private key of client])    [temp connection private key of server])
-=                                           =
-[shared key]                                [shared key]
-```
+    Client:                                     Server:
+    generate_shared_key(                        generate_shared_key(
+    [temp connection public key of server],     [temp connection public key of client],
+    [temp connection private key of client])    [temp connection private key of server])
+    =                                           =
+    [shared key]                                [shared key]
 
 The generated shared key is equal on both sides and is used to encrypt and
 decrypt the encrypted data packets.
@@ -1489,52 +1499,68 @@ data packets sent will be of size 2 + 1417 which is 1419 total.
 
 The logic behind the format of the handshake is that we:
 
-1. need to prove to the server that we own the private key related to the public
-   key we are announcing ourselves with.
-1. need to establish a secure connection that has perfect forward secrecy
-1. prevent any replay, impersonation or other attacks
+1.  need to prove to the server that we own the private key related to the
+    public key we are announcing ourselves with.
+
+2.  need to establish a secure connection that has perfect forward secrecy
+
+3.  prevent any replay, impersonation or other attacks
 
 How it accomplishes each of those points:
 
-1. If the client does not own the private key related to the public key they
-   will not be able to create the handshake packet.
-1. Temporary session keys generated by the client and server in the encrypted
-   part of the handshake packets are used to encrypt/decrypt packets during the
-   session.
-1. The following attacks are prevented:
-    - Attacker modifies any byte of the handshake packets: Decryption fail, no
-      attacks possible.
-    - Attacker captures the handshake packet from the client and replays it
-      later to the server: Attacker will never get the server to confirm the
-      connection (no effect).
-    - Attacker captures a server response and sends it to the client next time
-      they try to connect to the server: Client will never confirm the
-      connection. (See: `TCP_client`)
-    - Attacker tries to impersonate a server: They won't be able to decrypt the
-      handshake and won't be able to respond.
-    - Attacker tries to impersonate a client: Server won't be able to decrypt
-      the handshake.
+1.  If the client does not own the private key related to the public key they
+    will not be able to create the handshake packet.
+
+2.  Temporary session keys generated by the client and server in the encrypted
+    part of the handshake packets are used to encrypt/decrypt packets during
+    the session.
+
+3.  The following attacks are prevented:
+
+    -   Attacker modifies any byte of the handshake packets: Decryption fail,
+        no attacks possible.
+
+    -   Attacker captures the handshake packet from the client and replays it
+        later to the server: Attacker will never get the server to confirm the
+        connection (no effect).
+
+    -   Attacker captures a server response and sends it to the client next
+        time they try to connect to the server: Client will never confirm
+        the connection. (See: `TCP_client`)
+
+    -   Attacker tries to impersonate a server: They won't be able to decrypt
+        the handshake and won't be able to respond.
+
+    -   Attacker tries to impersonate a client: Server won't be able to decrypt
+        the handshake.
 
 The logic behind the format of the encrypted packets is that:
 
-1. TCP is a stream protocol, we need packets.
-1. Any attacks must be prevented
+1.  TCP is a stream protocol, we need packets.
+
+2.  Any attacks must be prevented
 
 How it accomplishes each of those points:
 
-1. 2 bytes before each packet of encrypted data denote the length. We assume a
-   functioning TCP will deliver bytes in order which makes it work. If the TCP
-   doesn't it most likely means it is under attack and for that see the next
-   point.
-1. The following attacks are prevented:
-    - Modifying the length bytes will either make the connection time out
-      and/or decryption fail.
-    - Modifying any encrypted bytes will make decryption fail.
-    - Injecting any bytes will make decryption fail.
-    - Trying to re order the packets will make decryption fail because of the
-      ordered nonce.
-    - Removing any packets from the stream will make decryption fail because of
-      the ordered nonce.
+1.  2 bytes before each packet of encrypted data denote the length. We assume a
+    functioning TCP will deliver bytes in order which makes it work. If the TCP
+    doesn't it most likely means it is under attack and for that see the
+    next point.
+
+2.  The following attacks are prevented:
+
+    -   Modifying the length bytes will either make the connection time out
+        and/or decryption fail.
+
+    -   Modifying any encrypted bytes will make decryption fail.
+
+    -   Injecting any bytes will make decryption fail.
+
+    -   Trying to re order the packets will make decryption fail because of the
+        ordered nonce.
+
+    -   Removing any packets from the stream will make decryption fail because
+        of the ordered nonce.
 
 ## Encrypted payload types
 
@@ -1543,64 +1569,64 @@ encrypted data packets.
 
 ### Routing request (0x00)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x00)
-`32`      | Public key
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x00) |
+| `32`   | Public key       |
 
 ### Routing request response (0x01)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x01)
-`1`       | `uint8_t` rpid
-`32`      | Public key
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x01) |
+| `1`    | `uint8_t` rpid   |
+| `32`   | Public key       |
 
 rpid is invalid `connection_id` (0) if refused, `connection_id` if accepted.
 
 ### Connect notification (0x02)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x02)
-`1`       | `uint8_t` `connection_id` of connection that got connected
+| Length | Contents                                                   |
+|:-------|:-----------------------------------------------------------|
+| `1`    | `uint8_t` (0x02)                                           |
+| `1`    | `uint8_t` `connection_id` of connection that got connected |
 
 ### Disconnect notification (0x03)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x03)
-`1`       | `uint8_t` `connection_id` of connection that got disconnected
+| Length | Contents                                                      |
+|:-------|:--------------------------------------------------------------|
+| `1`    | `uint8_t` (0x03)                                              |
+| `1`    | `uint8_t` `connection_id` of connection that got disconnected |
 
 ### Ping packet (0x04)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x04)
-`8`       | `uint64_t` `ping_id` (0 is invalid)
+| Length | Contents                            |
+|:-------|:------------------------------------|
+| `1`    | `uint8_t` (0x04)                    |
+| `8`    | `uint64_t` `ping_id` (0 is invalid) |
 
 ### Ping response (pong) (0x05)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x05)
-`8`       | `uint64_t` `ping_id` (0 is invalid)
+| Length | Contents                            |
+|:-------|:------------------------------------|
+| `1`    | `uint8_t` (0x05)                    |
+| `8`    | `uint64_t` `ping_id` (0 is invalid) |
 
 ### OOB send (0x06)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x06)
-`32`      | Destination public key
-variable  | Data
+| Length   | Contents               |
+|:---------|:-----------------------|
+| `1`      | `uint8_t` (0x06)       |
+| `32`     | Destination public key |
+| variable | Data                   |
 
 ### OOB recv (0x07)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` (0x07)
-`32`      | Sender public key
-variable  | Data
+| Length   | Contents          |
+|:---------|:------------------|
+| `1`      | `uint8_t` (0x07)  |
+| `32`     | Sender public key |
+| variable | Data              |
 
 ### Onion packet (0x08)
 
@@ -1612,17 +1638,17 @@ Same format as onion packet but packet id is 0x09 instead of 0x8e.
 
 ### Data (0x10 and up)
 
-Length    | Contents
---------- | --------
-`1`       | `uint8_t` packet id
-`1`       | `uint8_t` connection id
-variable  | data
+| Length   | Contents                |
+|:---------|:------------------------|
+| `1`      | `uint8_t` packet id     |
+| `1`      | `uint8_t` connection id |
+| variable | data                    |
 
 The TCP server is set up in a way to minimize waste while relaying the many
 packets that might go between two tox peers hence clients must create
 connections to other clients on the relay. The connection number is a `uint8_t`
-and must be equal or greater to 16 in order to be valid. Because a `uint8_t` has
-a maximum value of 256 it means that the maximum number of different
+and must be equal or greater to 16 in order to be valid. Because a `uint8_t`
+has a maximum value of 256 it means that the maximum number of different
 connections to other clients that each connection can have is 240. The reason
 valid `connection_ids` are bigger than 16 is because they are the first byte of
 data packets. Currently only number 0 to 9 are taken however we keep a few
@@ -1634,11 +1660,11 @@ the public the peer announced themselves as. The server must respond to this
 with a Routing response.
 
 Routing response (Sent by server to client): The response to the routing
-request, tell the client if the routing request succeeded (valid `connection_id`)
-and if it did, tell them the id of the connection (`connection_id`). The public
-key sent in the routing request is also sent in the response so that the client
-can send many requests at the same time to the server without having code to
-track which response belongs to which public key.
+request, tell the client if the routing request succeeded (valid
+`connection_id`) and if it did, tell them the id of the connection
+(`connection_id`). The public key sent in the routing request is also sent in
+the response so that the client can send many requests at the same time to the
+server without having code to track which response belongs to which public key.
 
 The only reason a routing request should fail is if the connection has reached
 the maximum number of simultaneous connections. In case the routing request
@@ -1646,8 +1672,8 @@ fails the public key in the response will be the public key in the failed
 request.
 
 Connect notification (Sent by server to client): Tell the client that
-`connection_id` is now connected meaning the other is online and data can be sent
-using this `connection_id`.
+`connection_id` is now connected meaning the other is online and data can be
+sent using this `connection_id`.
 
 Disconnect notification (Sent by client to server): Sent when client wants the
 server to forget about the connection related to the `connection_id` in the
@@ -1681,12 +1707,13 @@ must be ignored.
 OOB send (Sent by client to server): If a peer with private key equal to the
 key they announced themselves with is connected, the data in the OOB send
 packet will be sent to that peer as an OOB recv packet. If no such peer is
-connected, the packet is discarded. The toxcore `TCP_server` implementation has a
-hard maximum OOB data length of 1024. 1024 was picked because it is big enough
-for the `net_crypto` packets related to the handshake and is large enough that
-any changes to the protocol would not require breaking TCP server. It is
-however not large enough for the biggest `net_crypto` packets sent with an
-established `net_crypto` connection to prevent sending those via OOB packets.
+connected, the packet is discarded. The toxcore `TCP_server` implementation has
+a hard maximum OOB data length of 1024. 1024 was picked because it is big
+enough for the `net_crypto` packets related to the handshake and is large
+enough that any changes to the protocol would not require breaking TCP server.
+It is however not large enough for the biggest `net_crypto` packets sent with
+an established `net_crypto` connection to prevent sending those via OOB
+packets.
 
 OOB recv (Sent by server to client): OOB recv are sent with the announced
 public key of the peer that sent the OOB send packet and the exact data.
@@ -1695,9 +1722,9 @@ OOB packets can be used just like normal data packets however the extra size
 makes sending data only through them less efficient than data packets.
 
 Data: Data packets can only be sent and received if the corresponding
-`connection_id` is connection (a Connect notification has been received from it)
-if the server receives a Data packet for a non connected or existent connection
-it will discard it.
+`connection_id` is connection (a Connect notification has been received from
+it) if the server receives a Data packet for a non connected or existent
+connection it will discard it.
 
 Why did I use different packet ids for all packets when some are only sent by
 the client and some only by the server? It's less confusing.
@@ -1708,10 +1735,10 @@ the client and some only by the server? It's less confusing.
 `net_crypto` modules and takes care of linking the 3 together.
 
 Friends in `friend_connection` are represented by their real public key. When a
-friend is added in `friend_connection`, an onion search entry is created for that
-friend. This means that the onion module will start looking for this friend and
-send that friend their DHT public key, and the TCP relays it is connected to,
-in case a connection is only possible with TCP.
+friend is added in `friend_connection`, an onion search entry is created for
+that friend. This means that the onion module will start looking for this
+friend and send that friend their DHT public key, and the TCP relays it is
+connected to, in case a connection is only possible with TCP.
 
 Once the onion returns the DHT public key of the peer, the DHT public key is
 saved, added to the DHT friends list and a new `net_crypto` connection is
@@ -1719,8 +1746,8 @@ created. Any TCP relays returned by the onion for this friend are passed to the
 `net_crypto` connection.
 
 If the DHT establishes a direct UDP connection with the friend,
-`friend_connection` will pass the IP/port of the friend to `net_crypto` and also
-save it to be used to reconnect to the friend if they disconnect.
+`friend_connection` will pass the IP/port of the friend to `net_crypto` and
+also save it to be used to reconnect to the friend if they disconnect.
 
 If `net_crypto` finds that the friend has a different DHT public key, which can
 happen if the friend restarted their client, `net_crypto` will pass the new DHT
@@ -1729,32 +1756,32 @@ public key and replace it with the new one. The current `net_crypto` connection
 will also be killed and a new one with the correct DHT public key will be
 created.
 
-When the `net_crypto` connection for a friend goes online, `friend_connection` will
-tell the onion module that the friend is online so that it can stop spending
-resources looking for the friend. When the friend connection goes offline,
-`friend_connection` will tell the onion module so that it can start looking for
-the friend again.
+When the `net_crypto` connection for a friend goes online, `friend_connection`
+will tell the onion module that the friend is online so that it can stop
+spending resources looking for the friend. When the friend connection goes
+offline, `friend_connection` will tell the onion module so that it can start
+looking for the friend again.
 
 There are 2 types of data packets sent to friends with the `net_crypto`
 connection handled at the level of `friend_connection`, Alive packets and TCP
 relay packets. Alive packets are packets with the packet id or first byte of
 data (only byte in this packet) being 16. They are used in order to check if
-the other friend is still online. `net_crypto` does not have any timeout when the
-connection is established so timeouts are caught using this packet. In toxcore,
-this packet is sent every 8 seconds. If none of these packets are received for
-32 seconds, the connection is timed out and killed. These numbers seem to cause
-the least issues and 32 seconds is not too long so that, if a friend times out,
-toxcore won't falsely see them online for too long. Usually when a friend goes
-offline they have time to send a disconnect packet in the `net_crypto` connection
-which makes them appear offline almost instantly.
+the other friend is still online. `net_crypto` does not have any timeout when
+the connection is established so timeouts are caught using this packet. In
+toxcore, this packet is sent every 8 seconds. If none of these packets are
+received for 32 seconds, the connection is timed out and killed. These numbers
+seem to cause the least issues and 32 seconds is not too long so that, if a
+friend times out, toxcore won't falsely see them online for too long. Usually
+when a friend goes offline they have time to send a disconnect packet in the
+`net_crypto` connection which makes them appear offline almost instantly.
 
 The timeout for when to stop retrying to connect to a friend by creating new
-`net_crypto` connections when the old one times out in toxcore is the same as the
-timeout for DHT peers (122 seconds). However, it is calculated from the last
-time a DHT public key was received for the friend or time the friend's
-`net_crypto` connection went offline after being online. The highest time is used
-to calculate when the timeout is. `net_crypto` connections will be recreated (if
-the connection fails) until this timeout.
+`net_crypto` connections when the old one times out in toxcore is the same as
+the timeout for DHT peers (122 seconds). However, it is calculated from the
+last time a DHT public key was received for the friend or time the friend's
+`net_crypto` connection went offline after being online. The highest time is
+used to calculate when the timeout is. `net_crypto` connections will be
+recreated (if the connection fails) until this timeout.
 
 `friend_connection` sends a list of 3 relays (the same number as the target
 number of TCP relay connections in `TCP_connections`) to each connected friend
@@ -1767,10 +1794,10 @@ connect to each other using the relays. The packet id or first byte of the
 packet of share relay packets is 0x11. This is then followed by some TCP relays
 stored in packed node format.
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x11)
-variable    | TCP relays in packed node format (see DHT)
+| Length   | Contents                                   |
+|:---------|:-------------------------------------------|
+| `1`      | `uint8_t` (0x11)                           |
+| variable | TCP relays in packed node format (see DHT) |
 
 If local IPs are received as part of the packet, the local IP will be replaced
 with the IP of the peer that sent the relay. This is because we assume this is
@@ -1779,7 +1806,8 @@ relay is using a local IP, then the sent local IP should be used to connect to
 the relay.
 
 For all other data packets, are passed by `friend_connection` up to the upper
-Messenger module. It also separates lossy and lossless packets from `net_crypto`.
+Messenger module. It also separates lossy and lossless packets from
+`net_crypto`.
 
 Friend connection takes care of establishing the connection to the friend and
 gives the upper messenger layer a simple interface to receive and send
@@ -1820,32 +1848,26 @@ added which means changing it won't have any negative effects.
 
 Friend request:
 
-```text
-[uint32_t nospam][Message (UTF8) 1 to ONION_CLIENT_MAX_DATA_SIZE bytes]
-```
+    [uint32_t nospam][Message (UTF8) 1 to ONION_CLIENT_MAX_DATA_SIZE bytes]
 
 Friend request packet when sent as an onion data packet:
 
-```text
-[uint8_t (32)][Friend request]
-```
+    [uint8_t (32)][Friend request]
 
 Friend request packet when sent as a `net_crypto` data packet (If we are
 directly connected to the peer because of a group chat but are not friends with
 them):
 
-```text
-[uint8_t (18)][Friend request]
-```
+    [uint8_t (18)][Friend request]
 
 When a friend is added to toxcore with their Tox ID and a message, the friend
 is added in `friend_connection` and then toxcore tries to send friend requests.
 
 When sending a friend request, toxcore will check if the peer which a friend
-request is being sent to is already connected to using a `net_crypto` connection
-which can happen if both are in the same group chat. If this is the case the
-friend request will be sent as a `net_crypto` packet using that connection. If
-not, it will be sent as an onion data packet.
+request is being sent to is already connected to using a `net_crypto`
+connection which can happen if both are in the same group chat. If this is the
+case the friend request will be sent as a `net_crypto` packet using that
+connection. If not, it will be sent as an onion data packet.
 
 Onion data packets contain the real public key of the sender and if a
 `net_crypto` connection is established it means the peer knows our real public
@@ -1922,7 +1944,7 @@ the group. If every peer in the group does this, they will form a circle of
 perfectly connected peers.
 
 Once the peers are connected to each other in a circle they relay each others
-messages. every time a peer leaves the group or a new peer joins each member of
+messages. Every time a peer leaves the group or a new peer joins each member of
 the chat will recalculate the peers they should connect to.
 
 To join a group chat the peer must first be invited to it by their friend. To
@@ -1940,8 +1962,7 @@ from joining a groupchat twice for example.
 The groupchat will also have an unsigned 1 byte type. This type indicates what
 kind of groupchat the groupchat is, the current types are:
 
-0: text
-1: audio
+0: text 1: audio
 
 Text groupchats are text only while audio indicates that the groupchat supports
 sending audio to it as well as text.
@@ -1966,24 +1987,25 @@ Invite packets:
 
 Invite packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x60)
-`1`         | `uint8_t` (0x00)
-`2`         | `uint16_t` group number
-`33`        | Group chat identifier
+| Length | Contents                |
+|:-------|:------------------------|
+| `1`    | `uint8_t` (0x60)        |
+| `1`    | `uint8_t` (0x00)        |
+| `2`    | `uint16_t` group number |
+| `33`   | Group chat identifier   |
 
-A group chat identifier consists of a 1-byte type and a 32-byte ID concatenated.
+A group chat identifier consists of a 1-byte type and a 32-byte ID
+concatenated.
 
 Response packet
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x60)
-`1`         | `uint8_t` (0x01)
-`2`         | `uint16_t` group number (local)
-`2`         | `uint16_t` group number to join
-`33`        | Group chat identifier
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` (0x60)                |
+| `1`    | `uint8_t` (0x01)                |
+| `2`    | `uint16_t` group number (local) |
+| `2`    | `uint16_t` group number to join |
+| `33`   | Group chat identifier           |
 
 To invite a friend to a group chat, an invite packet is sent to the friend.
 These packets are sent using Messenger (if you look at the Messenger packet id
@@ -2039,19 +2061,19 @@ the group chat.
 
 Peer online packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x61)
-`2`         | `uint16_t` group number (local)
-`33`        | Group chat identifier
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` (0x61)                |
+| `2`    | `uint16_t` group number (local) |
+| `33`   | Group chat identifier           |
 
 Peer leave packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x62)
-`2`         | `uint16_t` group number (local)
-`1`         | `uint8_t` (0x01)
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` (0x62)                |
+| `2`    | `uint16_t` group number (local) |
+| `1`    | `uint8_t` (0x01)                |
 
 For a groupchat connection to work, both peers in the groupchat must be
 attempting to connect directly to each other.
@@ -2088,61 +2110,61 @@ kill the group connection tied to it.
 
 Peer query packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x62)
-`2`         | `uint16_t` group number
-`1`         | `uint8_t` (0x08)
+| Length | Contents                |
+|:-------|:------------------------|
+| `1`    | `uint8_t` (0x62)        |
+| `2`    | `uint16_t` group number |
+| `1`    | `uint8_t` (0x08)        |
 
 Peer response packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x62)
-`2`         | `uint16_t` group number
-`1`         | `uint8_t` (0x09)
-variable    | Repeated times number of peers: Peer info
+| Length   | Contents                                   |
+|:---------|:-------------------------------------------|
+| `1`      | `uint8_t` (0x62)                           |
+| `2`      | `uint16_t` group number                    |
+| `1`      | `uint8_t` (0x09)                           |
+| variable |  Repeated times number of peers: Peer info |
 
 The Peer info structure is as follows:
 
-Length      | Contents
------------ | --------
-`2`         | `uint16_t` peer number
-`32`        | Long term public key
-`32`        | DHT public key
-`1`         | `uint8_t` Name length
-`[0, 255]`  | Name
+| Length     | Contents               |
+|:-----------|:-----------------------|
+| `2`        | `uint16_t` peer number |
+| `32`       | Long term public key   |
+| `32`       | DHT public key         |
+| `1`        | `uint8_t` Name length  |
+| `[0, 255]` | Name                   |
 
 Title response packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x62)
-`2`         | `uint16_t` group number
-`1`         | `uint8_t` (0x0a)
-variable    | Title
+| Length   | Contents                |
+|:---------|:------------------------|
+| `1`      | `uint8_t` (0x62)        |
+| `2`      | `uint16_t` group number |
+| `1`      | `uint8_t` (0x0a)        |
+| variable | Title                   |
 
 Message packets:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x63)
-`2`         | `uint16_t` group number
-`2`         | `uint16_t` peer number
-`4`         | `uint32_t` message number
-`1`         | `uint8_t` with a value representing id of message
-variable    | Data
+| Length   | Contents                                          |
+|:---------|:--------------------------------------------------|
+| `1`      | `uint8_t` (0x63)                                  |
+| `2`      | `uint16_t` group number                           |
+| `2`      | `uint16_t` peer number                            |
+| `4`      | `uint32_t` message number                         |
+| `1`      | `uint8_t` with a value representing id of message |
+| variable | Data                                              |
 
 Lossy Message packets:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0xc7)
-`2`         | `uint16_t` group number
-`2`         | `uint16_t` peer number
-`4`         | `uint16_t` message number
-`1`         | `uint8_t` with a value representing id of message
-variable    | Data
+| Length   | Contents                                          |
+|:---------|:--------------------------------------------------|
+| `1`      | `uint8_t` (0xc7)                                  |
+| `2`      | `uint16_t` group number                           |
+| `2`      | `uint16_t` peer number                            |
+| `4`      | `uint16_t` message number                         |
+| `1`      | `uint8_t` with a value representing id of message |
+| variable | Data                                              |
 
 If a peer query packet is received, the receiver takes his list of peers and
 creates a peer response packet which is then sent to the other peer. If there
@@ -2187,47 +2209,47 @@ that should change in the Message packet as it is relayed is the group number.
 
 ### ping (0x00)
 
-Sent every ~60 seconds by every peer. Contains no data.
+Sent approximately every 60 seconds by every peer. Contains no data.
 
 ### `new_peer` (0x10)
 
 Tell everyone about a new peer in the chat.
 
-Length      | Contents
------------ | --------
-`2`         | `uint16_t` Peer number
-`32`        | Long term public key
-`32`        | DHT public key
+| Length | Contents               |
+|:-------|:-----------------------|
+| `2`    | `uint16_t` Peer number |
+| `32`   | Long term public key   |
+| `32`   | DHT public key         |
 
 ### `kill_peer` (0x11)
 
-Length      | Contents
------------ | --------
-`2`         | `uint16_t` Peer number
+| Length | Contents               |
+|:-------|:-----------------------|
+| `2`    | `uint16_t` Peer number |
 
 ### Name change (0x30)
 
-Length      | Contents
------------ | --------
-variable    | Name (namelen)
+| Length   | Contents       |
+|:---------|:---------------|
+| variable | Name (namelen) |
 
 ### Groupchat title change (0x31)
 
-Length      | Contents
------------ | --------
-variable    | Title (titlelen)
+| Length   | Contents         |
+|:---------|:-----------------|
+| variable | Title (titlelen) |
 
 ### Chat message (0x40)
 
-Length      | Contents
------------ | --------
-variable    | Message (messagelen)
+| Length   | Contents             |
+|:---------|:---------------------|
+| variable | Message (messagelen) |
 
 ### Action (/me) (0x41)
 
-Length      | Contents
------------ | --------
-variable    | Message (messagelen)
+| Length   | Contents             |
+|:---------|:---------------------|
+| variable | Message (messagelen) |
 
 Ping messages must be sent every 60 seconds by every peer. This is how other
 peers know that the peers are still alive.
@@ -2295,8 +2317,8 @@ without the peers needing to disconnect and reconnect. For example two Tox
 friends might first connect over TCP and a few seconds later switch to UDP when
 a direct UDP connection becomes possible. The opening up of the UDP route or
 'hole punching' is done by the DHT module and the opening up of a relayed TCP
-connection is done by the `TCP_connection` module. The Tox transport protocol has
-the job of connecting two peers (tox friends) safely once a route or
+connection is done by the `TCP_connection` module. The Tox transport protocol
+has the job of connecting two peers (tox friends) safely once a route or
 communications link between both is found. Direct UDP is preferred over TCP
 because it is direct and isn't limited by possibly congested TCP relays. Also,
 a peer can only connect to another using the Tox transport protocol if they
@@ -2345,16 +2367,14 @@ service attack by making the program run out of memory.
 
 cookie request packet (145 bytes):
 
-```text
-[uint8_t 24]
-[Sender's DHT Public key (32 bytes)]
-[Random nonce (24 bytes)]
-[Encrypted message containing:
-    [Sender's real public key (32 bytes)]
-    [padding (32 bytes)]
-    [uint64_t echo id (must be sent back untouched in cookie response)]
-]
-```
+    [uint8_t 24]
+    [Sender's DHT Public key (32 bytes)]
+    [Random nonce (24 bytes)]
+    [Encrypted message containing:
+        [Sender's real public key (32 bytes)]
+        [padding (32 bytes)]
+        [uint64_t echo id (must be sent back untouched in cookie response)]
+    ]
 
 Encrypted message is encrypted with sender's DHT private key, receiver's DHT
 public key and the nonce.
@@ -2377,14 +2397,12 @@ kills the connection if there are no responses.
 
 cookie response packet (161 bytes):
 
-```text
-[uint8_t 25]
-[Random nonce (24 bytes)]
-[Encrypted message containing:
-    [Cookie]
-    [uint64_t echo id (that was sent in the request)]
-]
-```
+    [uint8_t 25]
+    [Random nonce (24 bytes)]
+    [Encrypted message containing:
+        [Cookie]
+        [uint64_t echo id (that was sent in the request)]
+    ]
 
 Encrypted message is encrypted with the exact same symmetric key as the cookie
 request packet it responds to but with a different nonce.
@@ -2400,14 +2418,12 @@ contents of the encrypted part.
 
 The Cookie should be (112 bytes):
 
-```text
-[nonce]
-[encrypted data:
-    [uint64_t time]
-    [Sender's real public key (32 bytes)]
-    [Sender's DHT public key (32 bytes)]
-]
-```
+    [nonce]
+    [encrypted data:
+        [uint64_t time]
+        [Sender's real public key (32 bytes)]
+        [Sender's DHT public key (32 bytes)]
+    ]
 
 The cookie is a 112 byte piece of data that is created and sent to the
 requester as part of the cookie response packet. A peer who wants to connect to
@@ -2443,17 +2459,15 @@ enough information to construct the cookie.
 
 Handshake packet:
 
-```text
-[uint8_t 26]
-[Cookie]
-[nonce (24 bytes)]
-[Encrypted message containing:
-    [24 bytes base nonce]
-    [session public key of the peer (32 bytes)]
-    [sha512 hash of the entire Cookie sitting outside the encrypted part]
-    [Other Cookie (used by the other to respond to the handshake packet)]
-]
-```
+    [uint8_t 26]
+    [Cookie]
+    [nonce (24 bytes)]
+    [Encrypted message containing:
+        [24 bytes base nonce]
+        [session public key of the peer (32 bytes)]
+        [sha512 hash of the entire Cookie sitting outside the encrypted part]
+        [Other Cookie (used by the other to respond to the handshake packet)]
+    ]
 
 The packet id for handshake packets is 26. The cookie is a cookie obtained by
 sending a cookie request packet to the peer and getting a cookie response
@@ -2467,7 +2481,7 @@ term keys of both peers. This is to prevent impersonation.
 Inside the encrypted part of the handshake packet there is a 'base nonce' and a
 session public key. The 'base nonce' is a nonce that the other should use to
 encrypt each data packet, adding + 1 to it for each data packet sent. (first
-packet is 'base nonce' + 0, next is 'base nonce' + 1, etc.. Note that for
+packet is 'base nonce' + 0, next is 'base nonce' + 1, etc. Note that for
 mathematical operations the nonce is considered to be a 24 byte number in big
 endian format). The session key is the temporary connection public key that the
 peer has generated for this connection and it sending to the other. This
@@ -2514,12 +2528,14 @@ a valid encrypted data packet is received and decrypted.
 
 The states of a connection:
 
-1. Not accepted: Send handshake packets.
-1. Accepted: A handshake packet has been received from the other peer but no
-   encrypted encrypted packets: continue (or start) sending handshake packets
-   because the peer can't know if the other has received them.
-1. Confirmed: A valid encrypted packet has been received from the other peer:
-   Connection is fully established: stop sending handshake packets.
+1.  Not accepted: Send handshake packets.
+
+2.  Accepted: A handshake packet has been received from the other peer but no
+    encrypted encrypted packets: continue (or start) sending handshake packets
+    because the peer can't know if the other has received them.
+
+3.  Confirmed: A valid encrypted packet has been received from the other peer:
+    Connection is fully established: stop sending handshake packets.
 
 Toxcore sends handshake packets every second 8 times and times out the
 connection if the connection does not get confirmed (no encrypted packet is
@@ -2527,58 +2543,62 @@ received) within this time.
 
 Perfect handshake scenario:
 
-```text
-Peer 1                Peer 2
-Cookie request   ->
-                      <- Cookie response
-Handshake packet ->
-                      * accepts connection
-                      <- Handshake packet
-*accepts connection
-Encrypted packet ->   <- Encrypted packet
-*confirms connection  *confirms connection
-       Connection successful.
-Encrypted packets -> <- Encrypted packets
+    Peer 1                Peer 2
+    Cookie request   ->
+                          <- Cookie response
+    Handshake packet ->
+                          * accepts connection
+                          <- Handshake packet
+    *accepts connection
+    Encrypted packet ->   <- Encrypted packet
+    *confirms connection  *confirms connection
+           Connection successful.
+    Encrypted packets -> <- Encrypted packets
 
-More realistic handshake scenario:
-Peer 1                Peer 2
-Cookie request   ->   *packet lost*
-Cookie request   ->
-                      <- Cookie response
-                      *Peer 2 randomly starts new connection to peer 1
-                      <- Cookie request
-Cookie response  ->
-Handshake packet ->   <- Handshake packet
-*accepts connection   * accepts connection
-Encrypted packet ->   <- Encrypted packet
-*confirms connection  *confirms connection
-       Connection successful.
-Encrypted packets -> <- Encrypted packets
-```
+    More realistic handshake scenario:
+    Peer 1                Peer 2
+    Cookie request   ->   *packet lost*
+    Cookie request   ->
+                          <- Cookie response
+                          *Peer 2 randomly starts new connection to peer 1
+                          <- Cookie request
+    Cookie response  ->
+    Handshake packet ->   <- Handshake packet
+    *accepts connection   * accepts connection
+    Encrypted packet ->   <- Encrypted packet
+    *confirms connection  *confirms connection
+           Connection successful.
+    Encrypted packets -> <- Encrypted packets
 
-The reason why the handshake is like this is because of certain design requirements:
+The reason why the handshake is like this is because of certain design
+requirements:
 
-1. The handshake must not leak the long term public keys of the peers to a
-   possible attacker who would be looking at the packets but each peer must know
-   for sure that they are connecting to the right peer and not an impostor.
-1. A connection must be able of being established if only one of the peers has
-   the information necessary to initiate a connection (DHT public key of the
-   peer and a link to the peer).
-1. If both peers initiate a connection to each other at the same time the
-   connection must succeed without issues.
-1. There must be perfect forward secrecy.
-1. Must be resistant to any possible attacks.
+1.  The handshake must not leak the long term public keys of the peers to a
+    possible attacker who would be looking at the packets but each peer must
+    know for sure that they are connecting to the right peer and not
+    an impostor.
+
+2.  A connection must be able of being established if only one of the peers has
+    the information necessary to initiate a connection (DHT public key of the
+    peer and a link to the peer).
+
+3.  If both peers initiate a connection to each other at the same time the
+    connection must succeed without issues.
+
+4.  There must be perfect forward secrecy.
+
+5.  Must be resistant to any possible attacks.
 
 Due to how it is designed only one connection is possible at a time between 2
 peers.
 
 Encrypted packets:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x1b)
-`2`         | `uint16_t` The last 2 bytes of the nonce used to encrypt this
-variable    | Payload
+| Length   | Contents                                                      |
+|:---------|:--------------------------------------------------------------|
+| `1`      | `uint8_t` (0x1b)                                              |
+| `2`      | `uint16_t` The last 2 bytes of the nonce used to encrypt this |
+| variable |  Payload                                                      |
 
 The payload is encrypted with the session key and 'base nonce' set by the
 receiver in their handshake + packet number (starting at 0, big endian math).
@@ -2600,7 +2620,7 @@ other peer sent in the handshake packet with the total number of encrypted
 packets sent in the connection added to it ('base nonce' + 0 for the first
 encrypted data packet sent, 'base nonce' + 1 for the second, etc. Note that the
 nonce is treated as a big endian number for mathematical operations like
-additions). The 2 byte (uint16_t) number at the beginning of the encrypted
+additions). The 2 byte (`uint16_t`) number at the beginning of the encrypted
 packet is the last 2 bytes of this 24 byte nonce.
 
 To decrypt a received encrypted packet, the nonce the packet was encrypted with
@@ -2613,16 +2633,21 @@ the calculated nonce.
 
 Toxcore uses the following method to calculate the nonce for each packet:
 
-1. `diff` = (2 byte number on the packet) - (last 2 bytes of the current saved
-   base nonce) NOTE: treat the 3 variables as 16 bit unsigned ints, the result
-   is expected to sometimes roll over.
-1. copy `saved_base_nonce` to `temp_nonce`.
-1. `temp_nonce = temp_nonce + diff`. `temp_nonce` is the correct nonce that
-   can be used to decrypt the packet.
-1. `DATA_NUM_THRESHOLD` = (1/3 of the maximum number that can be stored in an
-   unsigned 2 bit integer)
-1. if decryption succeeds and `diff > (DATA_NUM_THRESHOLD * 2)` then:
-    - `saved_base_nonce = saved_base_nonce + DATA_NUM_THRESHOLD`
+1.  `diff` = (2 byte number on the packet) - (last 2 bytes of the current saved
+    base nonce) NOTE: treat the 3 variables as 16 bit unsigned ints, the result
+    is expected to sometimes roll over.
+
+2.  copy `saved_base_nonce` to `temp_nonce`.
+
+3.  `temp_nonce = temp_nonce + diff`. `temp_nonce` is the correct nonce that
+    can be used to decrypt the packet.
+
+4.  `DATA_NUM_THRESHOLD` = (1/3 of the maximum number that can be stored in an
+    unsigned 2 bit integer)
+
+5.  if decryption succeeds and `diff > (DATA_NUM_THRESHOLD * 2)` then:
+
+    -   `saved_base_nonce = saved_base_nonce + DATA_NUM_THRESHOLD`
 
 First it takes the difference between the 2 byte number on the packet and the
 last. Because the 3 values are unsigned 16 bit ints and rollover is part of the
@@ -2649,11 +2674,9 @@ from the other peer.
 
 Data in the encrypted packets:
 
-```text
-[our recvbuffers buffer_start, (highest packet number handled + 1), (big endian)]
-[uint32_t packet number if lossless, sendbuffer buffer_end if lossy, (big endian)]
-[data]
-```
+    [our recvbuffers buffer_start, (highest packet number handled + 1), (big endian)]
+    [uint32_t packet number if lossless, sendbuffer buffer_end if lossy, (big endian)]
+    [data]
 
 Encrypted packets may be lossy or lossless. Lossy packets are simply encrypted
 packets that are sent to the other. If they are lost, arrive in the wrong order
@@ -2715,15 +2738,15 @@ packet request packet:
 
 data ids:
 
-ID   | Data
----- | ----
-0    | padding (skipped until we hit a non zero (data id) byte)
-1    | packet request packet (lossy packet)
-2    | connection kill packet (lossy packet)
-...  | ...
-16+  | reserved for Messenger usage (lossless packets).
-192+ | reserved for Messenger usage (lossy packets).
-255  | reserved for Messenger usage (lossless packet)
+| ID   |  Data                                                    |
+|:-----|:---------------------------------------------------------|
+| 0    | padding (skipped until we hit a non zero (data id) byte) |
+| 1    | packet request packet (lossy packet)                     |
+| 2    | connection kill packet (lossy packet)                    |
+| ...  | ...                                                      |
+| 16+  | reserved for Messenger usage (lossless packets)          |
+| 192+ | reserved for Messenger usage (lossy packets)             |
+| 255  | reserved for Messenger usage (lossless packet)           |
 
 Connection kill packets tell the other that the connection is over.
 
@@ -2731,9 +2754,7 @@ Packet numbers are the first byte of data in the packet.
 
 packet request packet:
 
-```text
-[uint8_t (1)][uint8_t num][uint8_t num][uint8_t num]...[uint8_t num]
-```
+    [uint8_t (1)][uint8_t num][uint8_t num][uint8_t num]...[uint8_t num]
 
 Packet request packets are used by one side of the connection to request
 packets from the other. To create a full packet request packet, the one
@@ -2741,13 +2762,25 @@ requesting the packet takes the last packet number that was processed (sent to
 the relevant module and removed from the array (0 in the example above)).
 Subtract the number of the first missing packet from that number (1 - 0) = 1.
 Which means the full packet to request packet number 1 will look like:
-`[uint32_t 1][uint32_t 0][uint8_t 1][uint8_t 1]`. If packet number 4 was being
-requested as well, take the difference between the packet number and the last
-packet number being requested (4 - 1) = 3. So the packet will look like:
-`[uint32_t 1][uint32_t 0][uint8_t 1][uint8_t 1][uint8_t 3]`. But what if the
-number is greater than 255? Let's say the peer needs to request packets 3, 6,
-1024, the packet will look like: `[uint32_t 1][uint32_t 2][uint8_t 1][uint8_t
-3][uint8_t 3][uint8_t 0][uint8_t 0][uint8_t 0][uint8_t 253]`
+
+    [uint32_t 1]
+    [uint32_t 0]
+    [uint8_t 1][uint8_t 1]
+
+If packet number 4 was being requested as well, take the difference between the
+packet number and the last packet number being requested (4 - 1) = 3. So the
+packet will look like:
+
+    [uint32_t 1]
+    [uint32_t 0]
+    [uint8_t 1][uint8_t 1][uint8_t 3]
+
+But what if the number is greater than 255? Let's say the peer needs to request
+packets 3, 6, 1024, the packet will look like:
+
+    [uint32_t 1]
+    [uint32_t 2]
+    [uint8_t 1][uint8_t 3][uint8_t 3][uint8_t 0][uint8_t 0][uint8_t 0][uint8_t 253]
 
 Each 0 in the packet represents adding 255 until a non 0 byte is reached which
 is then added and the resulting requested number is what is left.
@@ -2767,20 +2800,18 @@ when packets are being received.
 
 The current formula used is (note that this formula is likely sub-optimal):
 
-```text
-REQUEST_PACKETS_COMPARE_CONSTANT = 50.0 double request_packet_interval =
-(REQUEST_PACKETS_COMPARE_CONSTANT /
-(((double)num_packets_array(&conn->recv_array) + 1.0) / (conn->packet_recv_rate
-+ 1.0)));
-```
+    REQUEST_PACKETS_COMPARE_CONSTANT = 50.0 double request_packet_interval =
+    (REQUEST_PACKETS_COMPARE_CONSTANT /
+    (((double)num_packets_array(&conn->recv_array) + 1.0) / (conn->packet_recv_rate
+    + 1.0)));
 
-num_packets_array(&conn->recv_array) returns the difference between the highest
-packet number received and the last one handled. In the toxcore code it refers
-to the total size of the current array (with the holes which are the
+`num_packets_array(&conn->recv_array)` returns the difference between the
+highest packet number received and the last one handled. In the toxcore code it
+refers to the total size of the current array (with the holes which are the
 placeholders for not yet received packets that are known to be missing).
 
-conn->packet_recv_rate is the number of data packets successfully received per
-second.
+`conn->packet_recv_rate` is the number of data packets successfully received
+per second.
 
 This formula was created with the logic that the higher the 'delay' in packets
 (`num_packets_array(&conn->recv_array)`) vs the speed of packets received, the
@@ -2847,17 +2878,17 @@ Things of note in this module are the maximum UDP packet size define
 (`MAX_UDP_PACKET_SIZE`) which sets the maximum UDP packet size toxcore can send
 and receive. The list of all UDP packet ids: `NET_PACKET_*`. UDP packet ids are
 the value of the first byte of each UDP packet and is how each packet gets
-sorted to the right module that can handle it. `networking_registerhandler()` is
-used by higher level modules in order to tell the network object which packets
-to send to which module via a callback.
+sorted to the right module that can handle it. `networking_registerhandler()`
+is used by higher level modules in order to tell the network object which
+packets to send to which module via a callback.
 
 It also contains datastructures used for ip addresses in toxcore. IP4 and IP6
 are the datastructures for ipv4 and ipv6 addresses, IP is the datastructure for
-storing either (the family can be set to `AF_INET` (ipv4) or `AF_INET6` (ipv6). It
-can be set to another value like `TCP_ONION_FAMILY`, `TCP_INET`, `TCP_INET6` or
-`TCP_FAMILY` which are invalid values in the network modules but valid values in
-some other module and denote a special type of ip) and `IP_Port` stores an IP
-datastructure with a port.
+storing either (the family can be set to `AF_INET` (ipv4) or `AF_INET6` (ipv6).
+It can be set to another value like `TCP_ONION_FAMILY`, `TCP_INET`, `TCP_INET6`
+or `TCP_FAMILY` which are invalid values in the network modules but valid
+values in some other module and denote a special type of ip) and `IP_Port`
+stores an IP datastructure with a port.
 
 Since the network module interacts directly with the underlying operating
 system with its socket functions it has code to make it work on windows, linux,
@@ -2931,113 +2962,189 @@ Onion packet (request):
 Initial (TCP) data sent as the data of a onion packet through the TCP client
 module:
 
-- `IP_Port` of node B
-- A random public key PK1
-- Encrypted with the secret key SK1 and the public key of Node B and the nonce:
-    - `IP_Port` of node C
-    - A random public key PK2
-    - Encrypted with the secret key SK2 and the public key of Node C and the nonce:
-        - `IP_Port` of node D
-        - Data to send to Node D
+-   `IP_Port` of node B
+
+-   A random public key PK1
+
+-   Encrypted with the secret key SK1 and the public key of Node B and the
+    nonce:
+
+    -   `IP_Port` of node C
+
+    -   A random public key PK2
+
+    -   Encrypted with the secret key SK2 and the public key of Node C and the
+        nonce:
+
+        -   `IP_Port` of node D
+
+        -   Data to send to Node D
 
 Initial (UDP) (sent from us to node A):
 
-- `uint8_t` (0x80) packet id
-- Nonce
-- Our temporary DHT public key
-- Encrypted with our temporary DHT secret key and the public key of Node A and
-  the nonce:
-    - `IP_Port` of node B
-    - A random public key PK1
-    - Encrypted with the secret key SK1 and the public key of Node B and the nonce:
-        - `IP_Port` of node C
-        - A random public key PK2
-        - Encrypted with the secret key SK2 and the public key of Node C and the
-          nonce:
-            - `IP_Port` of node D
-            - Data to send to Node D
+-   `uint8_t` (0x80) packet id
+
+-   Nonce
+
+-   Our temporary DHT public key
+
+-   Encrypted with our temporary DHT secret key and the public key of Node A
+    and the nonce:
+
+    -   `IP_Port` of node B
+
+    -   A random public key PK1
+
+    -   Encrypted with the secret key SK1 and the public key of Node B and the
+        nonce:
+
+        -   `IP_Port` of node C
+
+        -   A random public key PK2
+
+        -   Encrypted with the secret key SK2 and the public key of Node C and
+            the nonce:
+
+            -   `IP_Port` of node D
+
+            -   Data to send to Node D
 
 (sent from node A to node B):
 
-- `uint8_t` (0x81) packet id
-- Nonce
-- A random public key PK1
-- Encrypted with the secret key SK1 and the public key of Node B and the nonce:
-    - `IP_Port` of node C
-    - A random public key PK2
-    - Encrypted with the secret key SK2 and the public key of Node C and the nonce:
-        - `IP_Port` of node D
-        - Data to send to Node D
-- Nonce
-- Encrypted with temporary symmetric key of Node A and the nonce:
-    - `IP_Port` (of us)
+-   `uint8_t` (0x81) packet id
+
+-   Nonce
+
+-   A random public key PK1
+
+-   Encrypted with the secret key SK1 and the public key of Node B and the
+    nonce:
+
+    -   `IP_Port` of node C
+
+    -   A random public key PK2
+
+    -   Encrypted with the secret key SK2 and the public key of Node C and the
+        nonce:
+
+        -   `IP_Port` of node D
+
+        -   Data to send to Node D
+
+-   Nonce
+
+-   Encrypted with temporary symmetric key of Node A and the nonce:
+
+    -   `IP_Port` (of us)
 
 (sent from node B to node C):
 
-- `uint8_t` (0x82) packet id
-- Nonce
-- A random public key PK1
-- Encrypted with the secret key SK1 and the public key of Node C and the nonce:
-    - `IP_Port` of node D
-    - Data to send to Node D
-- Nonce
-- Encrypted with temporary symmetric key of Node B and the nonce:
-    - `IP_Port` (of Node A)
-    - Nonce
-    - Encrypted with temporary symmetric key of Node A and the nonce:
-        - `IP_Port` (of us)
+-   `uint8_t` (0x82) packet id
+
+-   Nonce
+
+-   A random public key PK1
+
+-   Encrypted with the secret key SK1 and the public key of Node C and the
+    nonce:
+
+    -   `IP_Port` of node D
+
+    -   Data to send to Node D
+
+-   Nonce
+
+-   Encrypted with temporary symmetric key of Node B and the nonce:
+
+    -   `IP_Port` (of Node A)
+
+    -   Nonce
+
+    -   Encrypted with temporary symmetric key of Node A and the nonce:
+
+        -   `IP_Port` (of us)
 
 (sent from node C to node D):
 
-- Data to send to Node D
-- Nonce
-- Encrypted with temporary symmetric key of Node C and the nonce:
-    - `IP_Port` (of Node B)
-    - Nonce
-    - Encrypted with temporary symmetric key of Node B and the nonce:
-        - `IP_Port` (of Node A)
-        - Nonce
-        - Encrypted with temporary symmetric key of Node A and the nonce:
-            - `IP_Port` (of us)
+-   Data to send to Node D
+
+-   Nonce
+
+-   Encrypted with temporary symmetric key of Node C and the nonce:
+
+    -   `IP_Port` (of Node B)
+
+    -   Nonce
+
+    -   Encrypted with temporary symmetric key of Node B and the nonce:
+
+        -   `IP_Port` (of Node A)
+
+        -   Nonce
+
+        -   Encrypted with temporary symmetric key of Node A and the nonce:
+
+            -   `IP_Port` (of us)
 
 Onion packet (response):
 
 initial (sent from node D to node C):
 
-- `uint8_t` (0x8c) packet id
-- Nonce
-- Encrypted with the temporary symmetric key of Node C and the nonce:
-    - `IP_Port` (of Node B)
-    - Nonce
-    - Encrypted with the temporary symmetric key of Node B and the nonce:
-        - `IP_Port` (of Node A)
-        - Nonce
-        - Encrypted with the temporary symmetric key of Node A and the nonce:
-            - `IP_Port` (of us)
-- Data to send back
+-   `uint8_t` (0x8c) packet id
+
+-   Nonce
+
+-   Encrypted with the temporary symmetric key of Node C and the nonce:
+
+    -   `IP_Port` (of Node B)
+
+    -   Nonce
+
+    -   Encrypted with the temporary symmetric key of Node B and the nonce:
+
+        -   `IP_Port` (of Node A)
+
+        -   Nonce
+
+        -   Encrypted with the temporary symmetric key of Node A and the nonce:
+
+            -   `IP_Port` (of us)
+
+-   Data to send back
 
 (sent from node C to node B):
 
-- `uint8_t` (0x8d) packet id
-- Nonce
-- Encrypted with the temporary symmetric key of Node B and the nonce:
-    - `IP_Port` (of Node A)
-    - Nonce
-    - Encrypted with the temporary symmetric key of Node A and the nonce:
-        - `IP_Port` (of us)
-- Data to send back
+-   `uint8_t` (0x8d) packet id
+
+-   Nonce
+
+-   Encrypted with the temporary symmetric key of Node B and the nonce:
+
+    -   `IP_Port` (of Node A)
+
+    -   Nonce
+
+    -   Encrypted with the temporary symmetric key of Node A and the nonce:
+
+        -   `IP_Port` (of us)
+
+-   Data to send back
 
 (sent from node B to node A):
 
-- `uint8_t` (0x8e) packet id
-- Nonce
-- Encrypted with the temporary symmetric key of Node A and the nonce:
-    - `IP_Port` (of us)
-- Data to send back
+-   `uint8_t` (0x8e) packet id
+
+-   Nonce
+
+-   Encrypted with the temporary symmetric key of Node A and the nonce:
+
+    -   `IP_Port` (of us)
+
+-   Data to send back
 
 (sent from node A to us):
 
-- Data to send back
+-   Data to send back
 
 Each packet is encrypted multiple times so that only node A will be able to
 receive and decrypt the first packet and know where to send it to, node B will
@@ -3054,21 +3161,17 @@ refreshed every hour (in toxcore) as a security measure to force expire paths.
 
 Here's a diagram how it works:
 
-```text
-peer
-  -> [onion1[onion2[onion3[data]]]] -> Node A
-  -> [onion2[onion3[data]]][sendbackA] -> Node B
-  -> [onion3[data]][sendbackB[sendbackA]] -> Node C
-  -> [data][SendbackC[sendbackB[sendbackA]]]-> Node D (end)
-```
+    peer
+      -> [onion1[onion2[onion3[data]]]] -> Node A
+      -> [onion2[onion3[data]]][sendbackA] -> Node B
+      -> [onion3[data]][sendbackB[sendbackA]] -> Node C
+      -> [data][SendbackC[sendbackB[sendbackA]]]-> Node D (end)
 
-```text
-Node D
-  -> [SendbackC[sendbackB[sendbackA]]][response] -> Node C
-  -> [sendbackB[sendbackA]][response] -> Node B
-  -> [sendbackA][response] -> Node A
-  -> [response] -> peer
-```
+    Node D
+      -> [SendbackC[sendbackB[sendbackA]]][response] -> Node C
+      -> [sendbackB[sendbackA]][response] -> Node B
+      -> [sendbackA][response] -> Node A
+      -> [response] -> peer
 
 The random public keys in the onion packets are temporary public keys generated
 for and used for that onion path only. This is done in order to make it
@@ -3083,24 +3186,24 @@ paths together.
 
 The `IP_Port` is an ip and port in packed format:
 
-Length      | Contents
------------ | --------
-`1`         | `TOX_AF_INET` (2) for IPv4 or `TOX_AF_INET6` (10) for IPv6
-`4 | 16`    | IP address (4 bytes if IPv4, 16 if IPv6)
-`12 | 0`    | Zeroes
-`2`         | `uint16_t` Port
+| Length   | Contents                                                   |
+|:---------|:-----------------------------------------------------------|
+| `1`      | `TOX_AF_INET` (2) for IPv4 or `TOX_AF_INET6` (10) for IPv6 |
+| `4 | 16` | IP address (4 bytes if IPv4, 16 if IPv6)                   |
+| `12 | 0` | Zeroes                                                     |
+| `2`      | `uint16_t` Port                                            |
 
 If IPv4 the format is padded with 12 bytes of zeroes so that both IPv4 and IPv6
 have the same stored size.
 
-The `IP_port` will always end up being of size 19 bytes. This is to make it hard
-to know if an ipv4 or ipv6 ip is in the packet just by looking at the size. The
-12 bytes of zeros when ipv4 must be set to 0 and not left uninitialized as some
-info may be leaked this way if it stays uninitialized. All numbers here are in
-big endian format.
+The `IP_Port` will always end up being of size 19 bytes. This is to make it
+hard to know if an ipv4 or ipv6 ip is in the packet just by looking at the
+size. The 12 bytes of zeros when ipv4 must be set to 0 and not left
+uninitialized as some info may be leaked this way if it stays uninitialized.
+All numbers here are in big endian format.
 
-The `IP_Port` in the sendback data can be in any format as long as the length is
-19 bytes because only the one who writes it can decrypt it and read it,
+The `IP_Port` in the sendback data can be in any format as long as the length
+is 19 bytes because only the one who writes it can decrypt it and read it,
 however, using the previous format is recommended because of code reuse. The
 nonce in the sendback data must be a 24 byte nonce.
 
@@ -3128,12 +3231,12 @@ Note: nonce is a 24 byte nonce.
 
 announce request packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x83)
-`24`        | Nonce
-`32`        | A public key (real or temporary)
-`?`         | Payload
+| Length | Contents                         |
+|:-------|:---------------------------------|
+| `1`    | `uint8_t` (0x83)                 |
+| `24`   | Nonce                            |
+| `32`   | A public key (real or temporary) |
+| `?`    | Payload                          |
 
 The public key is our real long term public key if we want to announce
 ourselves, a temporary one if we are searching for friends.
@@ -3141,28 +3244,28 @@ ourselves, a temporary one if we are searching for friends.
 The payload is encrypted with the secret key part of the sent public key, the
 public key of Node D and the nonce, and contains:
 
-Length      | Contents
------------ | --------
-`32`        | Ping ID
-`32`        | Public key we are searching for
-`32`        | Public key that we want those sending back data packets to use
-`8`         | Data to send back in response
+| Length | Contents                                                       |
+|:-------|:---------------------------------------------------------------|
+| `32`   | Ping ID                                                        |
+| `32`   | Public key we are searching for                                |
+| `32`   | Public key that we want those sending back data packets to use |
+| `8`    | Data to send back in response                                  |
 
 If the ping id is zero, respond with a announce response packet.
 
 If the ping id matches the one the node sent in the announce response and the
-public key matches the one being searched for, add the part used to send data to
-our list. If the list is full make it replace the furthest entry.
+public key matches the one being searched for, add the part used to send data
+to our list. If the list is full make it replace the furthest entry.
 
 data to route request packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x85)
-`32`        | Public key of destination node
-`24`        | Nonce
-`32`        | Temporary just generated public key
-variable    | Payload
+| Length   | Contents                            |
+|:---------|:------------------------------------|
+| `1`      | `uint8_t` (0x85)                    |
+| `32`     | Public key of destination node      |
+| `24`     | Nonce                               |
+| `32`     | Temporary just generated public key |
+| variable | Payload                             |
 
 The payload is encrypted with that temporary secret key and the nonce and the
 public key from the announce response packet of the destination node. If Node D
@@ -3171,55 +3274,55 @@ to route response packet to the right node.
 
 The data in the previous packet is in format:
 
-Length      | Contents
------------ | --------
-`32`        | Real public key of sender
-variable    | Payload
+| Length   | Contents                  |
+|:---------|:--------------------------|
+| `32`     | Real public key of sender |
+| variable |  Payload                  |
 
 The payload is encrypted with real secret key of the sender, the nonce in the
 data packet and the real public key of the receiver:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` id
-variable    | Data (optional)
+| Length   | Contents         |
+|:---------|:-----------------|
+| `1`      | `uint8_t` id     |
+| variable |  Data (optional) |
 
 Data sent to us:
 
 announce response packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x84)
-`8`         | Data to send back in response
-`24`        | Nonce
-variable    | Payload
+| Length   | Contents                      |
+|:---------|:------------------------------|
+| `1`      | `uint8_t` (0x84)              |
+| `8`      | Data to send back in response |
+| `24`     | Nonce                         |
+| variable | Payload                       |
 
 The payload is encrypted with the DHT secret key of Node D, the public key in
 the request and the nonce:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` `is_stored`
-`32`        | Ping ID or Public Key
-variable    | Maximum of 4 nodes in packed node format (see DHT)
+| Length   | Contents                                           |
+|:---------|:---------------------------------------------------|
+| `1`      |  `uint8_t` `is_stored`                             |
+| `32`     | Ping ID or Public Key                              |
+| variable | Maximum of 4 nodes in packed node format (see DHT) |
 
 The packet contains a ping ID if `is_stored` is 0 or 2, or the public key that
 must be used to send data packets if `is_stored` is 1.
 
-If the `is_stored` is not 0, it means the information to reach the public key we
-are searching for is stored on this node. `is_stored` is 2 as a response to a
-peer trying to announce himself to tell the peer that he is currently announced
-successfully.
+If the `is_stored` is not 0, it means the information to reach the public key
+we are searching for is stored on this node. `is_stored` is 2 as a response to
+a peer trying to announce himself to tell the peer that he is currently
+announced successfully.
 
 data to route response packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x86)
-`24`        | Nonce
-`32`        | Temporary just generated public key
-variable    | Payload
+| Length   | Contents                            |
+|:---------|:------------------------------------|
+| `1`      | `uint8_t` (0x86)                    |
+| `24`     | Nonce                               |
+| `32`     | Temporary just generated public key |
+| variable | Payload                             |
 
 The payload is encrypted with that temporary secret key, the nonce and the
 public key from the announce response packet of the destination node.
@@ -3251,11 +3354,11 @@ packet and encrypt it with our long term private key. This is so the peer we
 are announcing ourselves to can be sure that we actually own that public key.
 If we are looking for peers we use a temporary public key used only for packets
 looking for that peer in order to leak as little information as possible. The
-`ping_id` is a 32 byte number which is sent to us in the announce response and we
-must send back to the peer in another announce request. This is done in order
-to prevent people from easily announcing themselves many times as they have to
-prove they can respond to packets from the peer before the peer will let them
-announce themselves. This `ping_id` is set to 0 when none is known.
+`ping_id` is a 32 byte number which is sent to us in the announce response and
+we must send back to the peer in another announce request. This is done in
+order to prevent people from easily announcing themselves many times as they
+have to prove they can respond to packets from the peer before the peer will
+let them announce themselves. This `ping_id` is set to 0 when none is known.
 
 The public key we are searching for is set to our long term public key when
 announcing ourselves and set to the long term public key of the friend we are
@@ -3343,9 +3446,9 @@ time (divided by 20) and the second with the current time + 20 (divided by 20).
 The two ping ids are then compared to the ping ids in the received packets. The
 reason for doing this is that storing every ping id received might be expensive
 and leave us vulnerable to a DoS attack, this method makes sure that the other
-cannot generate `ping_id`s and must ask for them. The reason for the 2 `ping_id`s
-is that we want to make sure that the timeout is at least 20 seconds and cannot
-be 0.
+cannot generate `ping_id`s and must ask for them. The reason for the 2
+`ping_id`s is that we want to make sure that the timeout is at least 20 seconds
+and cannot be 0.
 
 If one of the two ping ids is equal to the public key used to encrypt the
 announce packet (the pk the peer is announcing himself as), the sendback data
@@ -3380,9 +3483,10 @@ public key which is also the 'public key we are searching for' in the announce
 packet) meaning the peer is announcing itself and an entry for it exists, the
 sending back data public key is checked to see if it equals the one it the
 packet. If it is not equal it means that it is outdated, probably because the
-announcing peer's toxcore instance was restarted and so their `is_stored` is set
-to 0, if it is equal it means the peer is announced correctly so the `is_stored`
-is set to 2. The first generated `ping_id` is then copied to the packet.
+announcing peer's toxcore instance was restarted and so their `is_stored` is
+set to 0, if it is equal it means the peer is announced correctly so the
+`is_stored` is set to 2. The first generated `ping_id` is then copied to the
+packet.
 
 Once the packet is contructed a random 24 byte nonce is generated, the packet
 is encrypted (the shared key used to decrypt the request can be saved and used
@@ -3459,11 +3563,11 @@ For peers we are announcing ourselves to, if we are not announced to them
 toxcore tries every 3 seconds to announce ourselves to them until they return
 that we have announced ourselves to, then toxcore sends an announce request
 packet every 15 seconds to see if we are still announced and re announce
-ourselves at the same time. The timeout of 15 seconds means a `ping_id` received
-in the last packet will not have had time to expire (20 second minimum timeout)
-before it is resent 15 seconds later. Toxcore sends every announce packet with
-the `ping_id` previously received from that peer with the same path (if
-possible).
+ourselves at the same time. The timeout of 15 seconds means a `ping_id`
+received in the last packet will not have had time to expire (20 second minimum
+timeout) before it is resent 15 seconds later. Toxcore sends every announce
+packet with the `ping_id` previously received from that peer with the same path
+(if possible).
 
 For friends this is slightly different. It is important to start searching for
 friends after we are fully announced. Assuming a perfect network, we would only
@@ -3492,23 +3596,23 @@ Onion data packets are packets sent as the data of data to route packets.
 
 Onion data packets:
 
-Length      | Contents
------------ | --------
-`32`        | Long term public key of sender
-variable    | Payload
+| Length   | Contents                       |
+|:---------|:-------------------------------|
+| `32`     | Long term public key of sender |
+| variable |  Payload                       |
 
-The payload is encrypted with long term private key of the sender, the long term
-public key of the receiver and the nonce used in the data to route request
+The payload is encrypted with long term private key of the sender, the long
+term public key of the receiver and the nonce used in the data to route request
 packet used to send this onion data packet (shaves off 24 bytes).
 
 DHT public key packet:
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x9c)
-`8`         | `uint64_t` `no_replay`
-`32`        | Our DHT public key
-`[39, 204]` | Maximum of 4 nodes in packed format
+| Length      | Contents                            |
+|:------------|:------------------------------------|
+| `1`         | `uint8_t` (0x9c)                    |
+| `8`         | `uint64_t` `no_replay`              |
+| `32`        | Our DHT public key                  |
+| `[39, 204]` | Maximum of 4 nodes in packed format |
 
 The packet will only be accepted if the `no_replay` number is greater than the
 `no_replay` number in the last packet received.
@@ -3535,14 +3639,15 @@ friend, resending it right away without waiting has a high likelihood of
 failure as the chances of packet loss happening to all (up to to 8) packets
 sent is low.
 
-When sent as a DHT request packet (this is the data sent in the DHT request packet):
+When sent as a DHT request packet (this is the data sent in the DHT request
+packet):
 
-Length      | Contents
------------ | --------
-`1`         | `uint8_t` (0x9c)
-`32`        | Long term public key of sender
-`24`        | Nonce
-variable    | Encrypted payload
+| Length   | Contents                       |
+|:---------|:-------------------------------|
+| `1`      | `uint8_t` (0x9c)               |
+| `32`     | Long term public key of sender |
+| `24`     | Nonce                          |
+| variable | Encrypted payload              |
 
 The payload is encrypted with long term private key of sender, the long term
 public key of receiver and the nonce, and contains the DHT public key packet.
@@ -3559,12 +3664,12 @@ Toxcore has a DHT request packet handler that passes received DHT public key
 packets from the DHT module to this module.
 
 If we receive a DHT public key packet, we will first check if the DHT packet is
-from a friend, if it is not from a friend, it will be discarded. The `no_replay`
-will then be checked to see if it is good and no packet with a lower one was
-received during the session. The DHT key, the TCP nodes in the packed nodes and
-the DHT nodes in the packed nodes will be passed to their relevant modules. The
-fact that we have the DHT public key of a friend means this module has achieved
-its goal.
+from a friend, if it is not from a friend, it will be discarded. The
+`no_replay` will then be checked to see if it is good and no packet with a
+lower one was received during the session. The DHT key, the TCP nodes in the
+packed nodes and the DHT nodes in the packed nodes will be passed to their
+relevant modules. The fact that we have the DHT public key of a friend means
+this module has achieved its goal.
 
 If a friend is online and connected to us, the onion will stop all of its
 actions for that friend. If the peer goes offline it will restart searching for
