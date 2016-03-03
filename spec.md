@@ -13,7 +13,9 @@ implemented exactly as specified. For some types, human-readable
 representations are suggested. An implementation may choose to provide no such
 representation or a different one. The implementation is free to choose any
 in-memory representation of the specified types, as long as they can be encoded
-to and decoded from the specified protocol representation.
+to and decoded from the specified protocol representation. The binary encoding
+of all integer types is a fixed-width byte sequence with the integer encoded in
+Big Endian.
 
 Binary formats are specified in tables with length, type, and content
 descriptions. If applicable, specific enumeration types are used, so types may
@@ -41,10 +43,10 @@ decryption, key generation, operations on nonces and generating random nonces.
 ## Text
 
 The Tox protocol differentiates between two types of text: Plain Text and
-Cipher Text. Cipher Text may be transmitted to peers. Plain Text can be
-Sensitive or Non Sensitive. Sensitive Plain Text must be transformed into
-Cipher Text using the encryption function before it can be transmitted to
-peers.
+Cipher Text. Cipher Text may be transmitted over untrusted data channels. Plain
+Text can be Sensitive or Non Sensitive. Sensitive Plain Text must be
+transformed into Cipher Text using the encryption function before it can be
+transmitted over untrusted data channels.
 
 ## Key
 
@@ -133,7 +135,7 @@ implementation must be careful to use the correct functions.
 `crypto_box` uses xsalsa20 symmetric encryption and poly1305 authentication.
 
 The create and handle request functions are the encrypt and decrypt functions
-for a type of DHT packets used to send data directly to other DHT peers. To be
+for a type of DHT packets used to send data directly to other DHT nodes. To be
 honest they should probably be in the DHT module but they seem to fit better
 here. TODO: What exactly are these functions?
 
@@ -267,31 +269,36 @@ Byte value | Packet Kind
 
 # DHT
 
-The DHT is a self-organizing swarm of all peers in the Tox network. A peer in
-the Tox network is also called "node" or "Tox node". This module takes care of
-finding the IP and port of peers and establishing a route to them directly via
+The DHT is a self-organizing swarm of all nodes in the Tox network. A node in
+the Tox network is also called "Tox node". When we talk about "peers", we mean
+any node that is not the local node (the subject). This module takes care of
+finding the IP and port of nodes and establishing a route to them directly via
 UDP using [hole punching](#hole-punching) if necessary. The DHT only runs on
 UDP and so is only used if UDP works.
 
-Every node in the Tox DHT has a temporary Key Pair called the DHT Key Pair
+Every node in the Tox DHT has an ephemeral Key Pair called the DHT Key Pair
 consisting of the DHT Secret Key and the DHT Public Key. The DHT Public Key
 acts as the node address. The DHT Key Pair is renewed every time the tox
-instance is closed or restarted. The DHT public key of a friend is found using
-the [onion](#onion) module. Once the DHT public key of a friend is known, the
-DHT is used to find them and connect directly to them via UDP.
+instance is closed or restarted. An implementation may choose to renew the key
+more often, but doing so will disconnect all peers.
+
+The DHT public key of a friend is found using the [onion](#onion) module. Once
+the DHT public key of a friend is known, the DHT is used to find them and
+connect directly to them via UDP.
 
 ## Distance
 
 A Distance is a positive integer. Its human-readable representation is a
-base-16 number. Distance is a [monoid](https://en.wikipedia.org/wiki/Monoid)
-with the associative binary operator `+` and the identity element `0`. When we
-speak of a "close node", we mean that their Distance is small compared to the
-Distance to other nodes.
+base-16 number. Distance is an [ordered
+monoid](https://en.wikipedia.org/wiki/Ordered_semigroup) with the associative
+binary operator `+` and the identity element `0`. When we speak of a "close
+node", we mean that their Distance to the node under consideration is small
+compared to the Distance to other nodes.
 
 The DHT needs a [metric](https://en.wikipedia.org/wiki/Metric_(mathematics)) to
-determine distance between two nodes. The Distance type is the result of this
-metric. The metric currently used by the Tox DHT is the `XOR` of the nodes'
-public keys. The public keys are interpreted as Big Endian integers (see
+determine distance between two nodes. The Distance type is the co-domain of
+this metric. The metric currently used by the Tox DHT is the `XOR` of the
+nodes' public keys. The public keys are interpreted as Big Endian integers (see
 [Crypto Numbers](#key-1)).
 
 An implementation is not required to provide a Distance type, so it has no
@@ -306,8 +313,8 @@ The XOR metric `d` satisfies the required conditions:
 
 1. Non-negativity `d(x, y) >= 0`: Since public keys are Crypto Numbers, which
    are by definition positive, their XOR is necessarily positive.
-1. Identity of indiscernibles `d(x, x) == 0`: The XOR of two equal integers is
-   always zero.
+1. Identity of indiscernibles `d(x, y) == 0` iff `x == y`: The XOR of two
+   integers is zero iff they are equal.
 1. Symmetry `d(x, y) == d(y, x)`: XOR is a symmetric operation.
 1. Subadditivity `d(x, z) <= d(x, y) + d(y, z)`: TODO.
 
@@ -323,12 +330,6 @@ Example: Given three nodes with keys 2, 5, and 6:
 The closest node from both 2 and 5 is 6. The closest node from 6 is 5 with
 distance 3. This example shows that a key that is close in terms of integer
 addition may not necessarily be close in terms of XOR.
-
-XOR is not an ultrametric, as the stronger inequality `d(x, z) <= max(d(x, y),
-d(y, z))` does not always hold. For example: given `x = 1`, `y = 7`, `z = 6`,
-we obtain the values `1 XOR 6 = 7`, `1 XOR 7 = 6`, `7 XOR 6 = 1`. Here, the
-simple inequality `7 <= 6 + 1` holds, but not `7 <= max(6, 1) = 6`. The Tox DHT
-does not require an ultrametric to function correctly.
 
 ## Self-organisation
 
@@ -379,10 +380,14 @@ Length      | Type        | [Contents](#dht-packet)
 `8`         | `uint64_t`  | Request ID
 
 The minimum payload size is 0, but in reality the smallest sensible payload
-size is 1. Due to symmetric encryption, there is an isomorphism between the
-payload and its encrypted request/response packets. This would allow an
-attacker to send valid responses, as the encrypted response would be byte-wise
-equal to the encrypted request.
+size is 1. Since the same symmetric key is used in both communication
+directions, an encrypted Request would be a valid encrypted Response if they
+contained the same plaintext.
+
+Parts of the protocol using RPC packets must take care to make Request payloads
+not be valid Response payloads. For instance, [Ping Packets](#ping-service)
+carry a boolean flag that indicate whether the payload corresponds to a Request
+or a Response.
 
 The Request ID provides some resistance against replay attacks. If there were
 no Request ID, it would be easy for an attacker to replay old responses and
