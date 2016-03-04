@@ -1,11 +1,25 @@
-language: rust
+language: haskell
+ghc: 7.8
+
+cache:
+  directories:
+    - $HOME/.cabal
+    - $HOME/.ghc
 
 install:
+  - mkdir -p ~/rust-installer ~/rust
+  - curl -sL https://static.rust-lang.org/rustup.sh -o ~/rust-installer/rustup.sh
+  - sh ~/rust-installer/rustup.sh --prefix=~/rust --spec=stable -y --disable-sudo 2> /dev/null
+  - export PATH=$PATH:$HOME/rust/bin
   - gem install mdl
+  - cabal install pandoc
 
 script:
   - make
   - make check
+  - make format
+  # Check that make format was executed before submitting.
+  - git diff --exit-code
 
 branches:
   only:
