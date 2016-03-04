@@ -427,7 +427,7 @@ created and sent back to the requestor.
 
 #### Ping Response (0x01)
 
-A Ping Request is a Ping Packet with the response flag set to True.
+A Ping Response is a Ping Packet with the response flag set to True.
 
 ### Nodes Service
 
