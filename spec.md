@@ -3139,7 +3139,6 @@ initial (sent from node D to node C):
 -   Encrypted with the temporary symmetric key of Node A and the nonce:
 
     -   `IP_Port` (of us)
-
 -   Data to send back
 
 (sent from node A to us):
