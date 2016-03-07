@@ -13,9 +13,7 @@ implemented exactly as specified. For some types, human-readable
 representations are suggested. An implementation may choose to provide no such
 representation or a different one. The implementation is free to choose any
 in-memory representation of the specified types, as long as they can be encoded
-to and decoded from the specified protocol representation. The binary encoding
-of all integer types is a fixed-width byte sequence with the integer encoded in
-Big Endian.
+to and decoded from the specified protocol representation.
 
 Binary formats are specified in tables with length, type, and content
 descriptions. If applicable, specific enumeration types are used, so types may
@@ -23,6 +21,24 @@ be self-explanatory in some cases. The length can be either a fixed number in
 bytes (e.g. `32`), a number in bits (e.g. `7` bit), a choice of lengths (e.g.
 `4 | 16`), or an inclusive range (e.g. `[0, 100]`). Open ranges are denoted
 `[n,]` to mean a minimum length of `n` with no specified maximum length.
+
+## Integers
+
+The protocol uses four bounded unsigned integer types. Bounded means they have
+a upper bound beyond which incrementing is not defined. The integer types
+support modular arithmetic, so overflow wraps around to zero. Unsigned means
+their lower bound is 0. Signed integer types are not used. The binary encoding
+of all integer types is a fixed-width byte sequence with the integer encoded in
+[Big Endian](https://en.wikipedia.org/wiki/Endianness) unless stated otherwise.
+
+| Type name | C type     | Length | Upper bound                               |
+|:----------|:-----------|:-------|:------------------------------------------|
+| Word8     | `uint8_t`  | 1      | 255 (0xff)                                |
+| Word16    | `uint16_t` | 2      | 65535 (0xffff)                            |
+| Word32    | `uint32_t` | 4      | 4294967295 (0xffffffff)                   |
+| Word64    | `uint64_t` | 8      | 18446744073709551615 (0xffffffffffffffff) |
+
+## Strings
 
 A String is a data structure used for human readable text. Strings are
 sequences of glyphs. A glyph consists of one non-zero-width unicode code point
