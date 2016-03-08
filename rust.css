@@ -333,7 +333,7 @@ hr {
 table {
     border-collapse: collapse;
     border-spacing: 0;
-    margin-bottom: 6px;
+    margin-bottom: 1em;
     overflow-x: auto;
     display: block;
 }
