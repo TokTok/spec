@@ -355,7 +355,7 @@ The closest node from both 2 and 5 is 6. The closest node from 6 is 5 with
 distance 3. This example shows that a key that is close in terms of integer
 addition may not necessarily be close in terms of XOR.
 
-### K-buckets
+## K-buckets
 
 K-buckets is a data structure for efficiently storing a set of nodes close to a
 certain key called the base key. The base key is constant throughout the
@@ -373,7 +373,7 @@ the entries are sorted by [distance](#distance) from the base key. Thus, the
 first (smallest) element of the set is the closest one to the base key in that
 set, the last (greatest) element is the furthest away.
 
-#### Bucket Index
+### Bucket Index
 
 The bucket index can be computed using the following function:
 `bucketIndex(baseKey, nodeKey) = 255 - log_2(distance(baseKey, nodeKey))`. This
@@ -391,7 +391,7 @@ local DHT key starts with e.g. `0x80` and the bucketed node key starts with
 the bucket index is 1. If the keys are almost exactly equal and only the last
 bit differs, the bucket index is 255.
 
-#### Updating k-buckets
+### Updating k-buckets
 
 Any update or lookup operation on a k-buckets instance that involves a single
 node requires us to first compute the bucket index for that node. An update
