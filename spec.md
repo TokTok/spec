@@ -355,6 +355,71 @@ The closest node from both 2 and 5 is 6. The closest node from 6 is 5 with
 distance 3. This example shows that a key that is close in terms of integer
 addition may not necessarily be close in terms of XOR.
 
+### K-buckets
+
+K-buckets is a data structure for efficiently storing a set of nodes close to a
+certain key called the base key. The base key is constant throughout the
+lifetime of a k-buckets instance.
+
+A k-buckets is a map from small integers `0 <= n < 256` to a set of up to `k`
+Node Infos. The set is called a bucket. `k` is called the bucket size. The
+default bucket size is 8.
+
+The number `n` is the bucket index. It is positive integer with the range
+`[0, 255]`, i.e. the range of an 8 bit unsigned integer.
+
+A bucket entry is an element of the bucket. The bucket is an ordered set, and
+the entries are sorted by [distance](#distance) from the base key. Thus, the
+first (smallest) element of the set is the closest one to the base key in that
+set, the last (greatest) element is the furthest away.
+
+#### Bucket Index
+
+The bucket index can be computed using the following function:
+`bucketIndex(baseKey, nodeKey) = 255 - log_2(distance(baseKey, nodeKey))`. This
+function is not defined when `baseKey == nodeKey`, meaning k-buckets will never
+contain a Node Info about the local node.
+
+Thus, each k-bucket contains only Node Infos for whose keys the following
+holds: if node with key `nodeKey` is in k-bucket with index `n`, then
+`bucketIndex(baseKey, nodeKey) == n`.
+
+The bucket index can be efficiently computed by determining the first bit at
+which the two keys differ, starting from the most significant bit. So, if the
+local DHT key starts with e.g. `0x80` and the bucketed node key starts with
+`0x40`, then the bucket index for that node is 0. If the second bit differs,
+the bucket index is 1. If the keys are almost exactly equal and only the last
+bit differs, the bucket index is 255.
+
+#### Updating k-buckets
+
+Any update or lookup operation on a k-buckets instance that involves a single
+node requires us to first compute the bucket index for that node. An update
+involving a Node Info with `nodeKey == baseKey` has no effect. If the update
+results in an empty bucket, that bucket is removed from the map.
+
+A bucket is *full* when the bucket contains the maximum number of entries
+configured by the bucket size.
+
+A node is *viable* for entry if the bucket is not *full* or the node's public
+key has a lower distance from the base key than the current entry with the
+greatest distance.
+
+If a node is *viable* and the bucket is *full*, the entry with the greatest
+distance from the base key is removed to keep the bucket size below the maximum
+configured bucket size.
+
+Adding a node whose key already exists will result in an update of the Node
+Info in the bucket. Removing a node for which no Node Info exists in the
+k-buckets has no effect. Thus, removing a node twice is permitted and has the
+same effect as removing it once.
+
+## DHT node state
+
+Every DHT stores a number of Node Infos of nodes that are close to its own DHT
+public key. It uses the k-buckets data structure for this, with the local DHT
+public key as the base key.
+
 ## Self-organisation
 
 Self-organising in the DHT occurs through each DHT peer connecting to an
@@ -471,7 +536,7 @@ An IPv4 node is 39 bytes, an IPv6 node is 51 bytes, so the maximum size is
 Nodes responses should contain the 4 closest nodes that the sender of the
 response has in their list of known nodes.
 
-#### Packed node format
+### Packed node format
 
 The DHT Send nodes uses the Packed Node Format.
 
@@ -479,32 +544,28 @@ Only the UDP Protocol (IP Type `2` and `10`) are used in the DHT module when
 sending nodes with the packed node format. This is because the TCP Protocol is
 used to send TCP relay information and the DHT is UDP only.
 
-For its close list toxcore calculates the index of the first bit in the given
-public key that does not match its DHT public key. If the first or most
-significant bit of both public keys does not match, that index is 0, if the
-first bit matches but not the second bit, that index is 1 and so on. For each
-index value, toxcore stores up to 8 nodes. This is done to increase the speed
-at which peers are found. Toxcore also stores the 8 nodes (Must be the same or
-smaller than the nodes toxcore stores for each index in its close list to make
-sure all the closest peers found will know the node being searched) closest to
-each of the public keys in its DHT friends list (or list of DHT public keys
-that it actively tries to find and connect to). Toxcore pings every node in the
-lists every 60 seconds to see if they are alive. It does not store itself in
-either list and does not send any requests to itself. Nodes can be in more than
-one list for example if the DHT public key of the peer is very close to the DHT
-public key of a friend being searched. It also sends get node requests to a
-random node (random makes it unpredictable, predictability or knowing which
-node a node will ping next could make some attacks that disrupt the network
-more easy as it adds a possible attack vector) in each of these lists of nodes
-every 20 seconds, with the search public key being its public key for the
-closest node and the public key being searched for being the ones in the DHT
-friends list. Nodes are removed after 122 seconds of no response. Nodes are
-added to the lists after a valid ping response or send node packet is received
-from them. If the node is already present in the list it is updated if the IP
-address changed. A node can only be added to a list if the list is not full or
-if the nodes DHT public key is closer than the DHT public key of at least one
-of the nodes in the list to the public key being searched with that list. When
-a node is added to a full list, it will replace the furthest node.
+This is done to increase the speed at which peers are found. Toxcore also
+stores the 8 nodes (Must be the same or smaller than the nodes toxcore stores
+for each index in its close list to make sure all the closest peers found will
+know the node being searched) closest to each of the public keys in its DHT
+friends list (or list of DHT public keys that it actively tries to find and
+connect to). Toxcore pings every node in the lists every 60 seconds to see if
+they are alive. It does not store itself in either list and does not send any
+requests to itself. Nodes can be in more than one list for example if the DHT
+public key of the peer is very close to the DHT public key of a friend being
+searched. It also sends get node requests to a random node (random makes it
+unpredictable, predictability or knowing which node a node will ping next could
+make some attacks that disrupt the network more easy as it adds a possible
+attack vector) in each of these lists of nodes every 20 seconds, with the
+search public key being its public key for the closest node and the public key
+being searched for being the ones in the DHT friends list. Nodes are removed
+after 122 seconds of no response. Nodes are added to the lists after a valid
+ping response or send node packet is received from them. If the node is already
+present in the list it is updated if the IP address changed. A node can only be
+added to a list if the list is not full or if the nodes DHT public key is
+closer than the DHT public key of at least one of the nodes in the list to the
+public key being searched with that list. When a node is added to a full list,
+it will replace the furthest node.
 
 If the 32 nodes number where increased, it would increase the amount of packets
 needed to check if each of them are still alive which would increase the
