@@ -598,8 +598,8 @@ When receiving a get node packet, toxcore will find the 4 nodes, in its nodes
 lists, closest to the public key in the packet and send them in the send node
 response.
 
-The timeouts and number of nodes in lists for toxcore where picked by feeling
-alone and are probably not the best values. This also applies to the behavior
+The timeouts and number of nodes in lists for toxcore were picked by feeling
+alone and probably are not the best values. This also applies to the behavior
 which is simple and should be improved in order to make the network resist
 better to sybil attacks.
 
