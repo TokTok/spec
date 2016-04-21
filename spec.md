@@ -289,7 +289,7 @@ The DHT is a self-organizing swarm of all nodes in the Tox network. A node in
 the Tox network is also called "Tox node". When we talk about "peers", we mean
 any node that is not the local node (the subject). This module takes care of
 finding the IP and port of nodes and establishing a route to them directly via
-UDP using [hole punching](#hole-punching) if necessary. The DHT only runs on
+UDP using [hole-punching](#hole-punching) if necessary. The DHT only runs on
 UDP and so is only used if UDP works.
 
 Every node in the Tox DHT has an ephemeral Key Pair called the DHT Key Pair
@@ -586,8 +586,8 @@ bandwidth usage but increase the amount of disconnected nodes that are still
 being stored in the lists. Decreasing these delays would do the opposite.
 
 If the 8 nodes closest to each public key were increased to 16 it would
-increase the bandwidth usage, might increase hole punching efficiency on
-symmetric NATs (more ports to guess from, see Hole punching) and might increase
+increase the bandwidth usage, might increase hole-punching efficiency on
+symmetric NATs (more ports to guess from, see Hole-punching) and might increase
 the reliability. Lowering this number would have the opposite effect.
 
 When receiving a send node packet, toxcore will check if each of the received
@@ -632,10 +632,10 @@ packets.
 
 ### NAT ping packets
 
-Sits inside the DHT request packet.
+Encapsulated in the DHT request packet.
 
-NAT ping packets are used to see if a friend we are not connected to directly
-is online and ready to do the hole punching.
+`NAT ping packet`s are used to check whether a friend we are not connected to
+directly is online and ready to do hole-punching.
 
 #### NAT ping request
 
@@ -645,6 +645,21 @@ is online and ready to do the hole punching.
 | `1`    | `uint8_t` (0x00)         |
 | `8`    | `uint64_t` random number |
 
+Received `NAT ping request` needs to be checked if it is from a friend.
+
+Check is performed by comparing the Public Key from [DHT request
+packet](#dht-request-packets) that given `NAT ping request` was encapsulated in
+with the list of Public Keys of own `friend`s.
+
+If `NAT ping request` is…
+
+-   … from own `friend`, a [`NAT ping response`](#nat-ping-response) with the
+    same `random number` that request has should be sent back via the nodes
+    that know the friend sending the request.
+    -   If there are no known nodes that know the `friend`, packet will
+        be dropped.
+-   … not from own `friend`, packet will be dropped.
+
 #### NAT ping response
 
 | Length | Contents                                                         |
@@ -653,100 +668,143 @@ is online and ready to do the hole punching.
 | `1`    | `uint8_t` (0x01)                                                 |
 | `8`    | `uint64_t` random number (the same that was received in request) |
 
-## Hole punching
+## Hole-punching
 
-For holepunching we assume that people using Tox are on one of 3 types of NAT:
+Mechanism to determine whether hole-punching should be started:
 
-Cone NATs: Assign one whole port to each UDP socket behind the NAT, any packet
-from any IP/port sent to that assigned port from the internet will be forwarded
-to the socket behind it.
+1.  Request from 8 closest to own node peers `IP:port` of friend.
+    [](TODO:_how?)
+2.  At least 4+ of nodes return `IP:port` of the friend.
+3.  Send [DHT ping request](#ping-service) to each of those `IP:port`s.
+4.  If no response is received, start hole-punching.
 
-Restricted Cone NATs: Assign one whole port to each UDP socket behind the NAT.
-However, it will only forward packets from IPs that the UDP socket has sent a
-packet to.
+*The numbers `8` and `4` are used in toxcore and were chosen based on "the
+feel" alone and might not be optimal.*
 
-Symmetric NATs: The worst kind of NAT, they assign a new port for each IP/port
-a packet is sent to. They treat each new peer you send a UDP packet to as a
-`'connection'` and will only forward packets from the IP/port of that
-`'connection'`.
+Before hole-punching is started, a [NAT ping packet](#net-ping-packets) is sent
+to the friend via peers that claim to know the friend. If [NAT ping
+response](#nat-ping-response) with the same random number is received,
+hole-punching should be started.
 
-Holepunching on normal cone NATs is achieved simply through the way in which
-the DHT functions.
+Receiving a `NAT ping response` means that the friend is both online and
+actively searching for us, since that is the only way they would know nodes
+that know us. **Hole-punching will work only if the friend is actively trying
+to connect to us.**
 
-If more than half of the 8 peers closest to the friend in the DHT return an
-IP/port for the friend and we send a ping request to each of the returned
-IP/ports but get no response. If we have sent 4 ping requests to 4 IP/ports
-that supposedly belong to the friend and get no response, then this is enough
-for toxcore to start the hole punching. The numbers 8 and 4 are used in toxcore
-and where chosen based on feel alone and so may not be the best numbers.
+`NAT ping request`s are sent every 3 seconds in toxcore. If no response is
+received for 6 seconds, the hole-punching will stop.
 
-Before starting the hole punching, the peer will send a NAT ping packet to the
-friend via the peers that say they know the friend. If a NAT ping response with
-the same random number is received the hole punching will start.
+Sending `NAT ping request`s in longer intervals might increase the possibility
+of the other node going offline and ping packets sent in the hole-punching
+being sent to a dead peer, but potentially it could decrease bandwidth usage.
+Decreasing the intervals will have the opposite effect.
 
-If a NAT ping request is received, we will first check if it is from a friend.
-If it is not from a friend it will be dropped. If it is from a friend, a
-response with the same 8 byte number as in the request will be sent back via
-the nodes that know the friend sending the request. If no nodes from the friend
-are known, the packet will be dropped.
+For hole-punching we *assume* that people using Tox are on one of 3 types of
+NAT:
 
-Receiving a NAT ping response therefore means that the friend is both online
-and actively searching for us, as that is the only way they would know nodes
-that know us. This is important because hole punching will work only if the
-friend is actively trying to connect to us.
+-   [`Cone NAT`](#cone-nat)
+-   [`Restricted Cone NAT`](#restricted-cone-nat)
+-   [`Symmetric NAT`](#symmetric-nat)
 
-NAT ping requests are sent every 3 seconds in toxcore, if no response is
-received for 6 seconds, the hole punching will stop. Sending them in longer
-intervals might increase the possibility of the other node going offline and
-ping packets sent in the hole punching being sent to a dead peer but decrease
-bandwidth usage. Decreasing the intervals will have the opposite effect.
+There are 3 cases that toxcore can encounter when hole-punching:
 
-There are 2 cases that toxcore handles for the hole punching. The first case is
-if each 4+ peers returned the same IP and port. The second is if the 4+ peers
-returned same IPs but different ports.
+-   4+ close to given Public Key peers returned the [same
+    `IP:port`](#restricted-cone-nat)
+-   4+ close to given Public Key peers returned the [same `IP`, but different
+    `port`](#symmetric-nat)
+-   close to given PK peers returns [different `IP:port`s](#different-ipports)
 
-A third case that may occur is the peers returning different IPs and ports.
-This can only happen if the friend is behind a very restrictive NAT that cannot
-be hole punched or if the peer recently connected to another internet
-connection and some peers still have the old one stored. Since there is nothing
-we can do for the first option it is recommended to just use the most common IP
-returned by the peers and to ignore the other IP/ports.
+### Cone NAT
 
-In the case where the peers return the same IP and port it means that the other
-friend is on a restricted cone NAT. These kind of NATs can be hole punched by
-getting the friend to send a packet to our public IP/port. This means that hole
-punching can be achieved easily and that we should just continue sending DHT
-ping packets regularly to that IP/port until we get a ping response. This will
-work because the friend is searching for us in the DHT and will find us and
-will send us a packet to our public IP/port (or try to with the hole punching),
-thereby establishing a connection.
+Behaviour of the software doing NAT:
 
-For the case where peers do not return the same ports, this means that the
-other peer is on a symmetric NAT. Some symmetric NATs open ports in sequences
-so the ports returned by the other peers might be something like: 1345, 1347,
-1389, 1395. The method to hole punch these NATs is to try to guess which ports
-are more likely to be used by the other peer when they try sending us ping
-requests and send some ping requests to these ports. Toxcore just tries all the
-ports beside each returned port (ex: for the 4 ports previously it would try:
-1345, 1347, 1389, 1395, 1346, 1348, 1390, 1396, 1344, 1346...) getting
-gradually further and further away and, although this works, the method could
-be improved. When using this method toxcore will try up to 48 ports every 3
-seconds until both connect. After 5 tries toxcore doubles this and starts
-trying ports from 1024 (48 each time) along with the previous port guessing.
-This is because I have noticed that this seemed to fix it for some symmetric
-NATs, most likely because a lot of them restart their count at 1024.
+-   Assign one whole port to each UDP socket behind the NAT, any packet from
+    any `IP:port` sent to that assigned port from the internet will be
+    forwarded to the socket behind it.
 
-Increasing the amount of ports tried per second would make the hole punching go
-faster but might DoS NATs due to the large number of packets being sent to
-different IPs in a short amount of time. Decreasing it would make the hole
-punching slower.
+Hole-punching with normal `cone NAT`s is achieved simply through the way in
+which the [DHT](#dht) functions, i.e. we send to the `IP:port` of friend [DHT
+ping request](#ping-service), and we receive [DHT ping
+response](#ping-response-0x01).
+
+### Restricted cone NAT
+
+Behaviour of the software doing NAT:
+
+-   Assign one whole port to each UDP socket behind the NAT. Forward packets
+    only from `IP`s that the UDP socket has sent a packet to.
+
+When 4+ nodes close to us return the same `IP:port` of the friend, it means
+that the friend is on a `restricted cone NAT`.
+
+Hole-punching can be done by getting the friend to send a packet to our public
+`IP:port`. This means that hole-punching can be achieved easily and that we
+should just continue sending [DHT ping packets](#ping-service) regularly to
+that `IP:port` until we get a [DHT ping response](#ping-response-0x01). This
+will work because the friend is searching for us in the DHT. Upon finding us
+friend will send a packet to our public `IP:port` (or try to with the
+hole-punching), thereby establishing a connection.
+
+### Symmetric NAT
+
+*It's the worst.*
+
+Behaviour of the software doing NAT:
+
+-   Assign a new port for each `IP:port` a packet is sent to. Treat each new
+    peer to which an UDP packet is sent to as a `connection`. Forward packets
+    only from the assigned `IP:port` of that `connection` to the socket.
+-   *In case of a bad implementation, crash & burn, making users cry.*
+
+Close to us nodes don't return the same `port` for friend – this means that the
+friend is on a `symmetric NAT`.
+
+Some symmetric NATs open ports in sequences, which could result in ports
+returned by close to us nodes to be e.g. 1345, 1347, 1389, 1395.
+
+Hole-punching with symmetric NATs is done based on guessing which ports are
+more likely to be used by friend when they're trying to send ping request to
+us. [DHT ping requests](#ping-service) are sent to those ports until
+`DHT ping response` is received.
+
+Toxcore tries all the ports, beside each returned port (e.g. for the 4 ports
+previously listed it would try: 1345, 1347, 1389, 1395, 1346, 1348, 1390, 1396,
+1344, 1346...), gradually trying ports further away from ones that close to us
+nodes reported as working.
+
+-   Try up to 48 ports every 3 seconds until connection is established.
+-   After 5 attempts, double (?)range(?) and start trying ports from `1024`, 48
+    at the same time, including previously guessed ports.
+    -   *This seemed to fix it for some symmetric NATs, most likely because a
+        lot of them restart their count at 1024. – `irungentoo`*
+
+Increasing the amount of ports tried per second would make the hole-punching
+happen faster but also has a potential to DoS NATs due to the large number of
+packets being sent to different IPs in a short amount of time. Decreasing the
+number of ports would make the hole punching slower.
+
+*Although this works, the method could be improved.*
 
 This works in cases where both peers have different NATs. For example, if A and
 B are trying to connect to each other: A has a symmetric NAT and B a restricted
 cone NAT. A will detect that B has a restricted cone NAT and keep sending ping
-packets to his one IP/port. B will detect that A has a symmetric NAT and will
-send packets to it to try guessing his ports. If B manages to guess the port A
+packets to B's one `IP:port`. B will detect that A has a symmetric NAT and will
+send packets to it to try guessing A's ports. If B manages to guess the port A
 is sending packets from they will connect together.
+
+### Different `IP:port`s
+
+May occur when peers return different `IP`s and `port`s.
+
+There are 2 cases when this can happen:
+
+-   the friend is behind a very restrictive NAT that cannot be hole-punched
+-   the friend recently connected to another internet connection and some peers
+    still have the outdated information
+
+There is nothing that can be done when very restrictive NAT is in play, thus it
+is recommended to use the most common `IP` returned by the peers and ignore
+other `IP:port`s.
 
 # LAN discovery
 
@@ -1404,7 +1462,7 @@ UDP is the same is for simplicity and so the connection can switch between both
 without the peers needing to disconnect and reconnect. For example two Tox
 friends might first connect over TCP and a few seconds later switch to UDP when
 a direct UDP connection becomes possible. The opening up of the UDP route or
-'hole punching' is done by the DHT module and the opening up of a relayed TCP
+'hole-punching' is done by the DHT module and the opening up of a relayed TCP
 connection is done by the `TCP_connection` module. The Tox transport protocol
 has the job of connecting two peers (tox friends) safely once a route or
 communications link between both is found. Direct UDP is preferred over TCP
@@ -3330,7 +3388,7 @@ find each others DHT public keys with the onion which would happen if they
 would have added themselves as normal friends.
 
 The upside of using `friend_connection` is that group chats do not have to deal
-with things like hole punching, peers only on TCP or other low level networking
+with things like hole-punching, peers only on TCP or other low level networking
 things. The downside however is that every single peer knows each others real
 long term public key and DHT public key which means these group chats should
 only be used between friends.
