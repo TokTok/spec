@@ -2959,6 +2959,36 @@ gives the upper messenger layer a simple interface to receive and send
 messages, add and remove friends and know if a friend is connected (online) or
 not connected (offline).
 
+# Tox ID
+
+The Tox ID is used to identify peers so that they can be added as friends in
+Tox. In order to add a friend, a Tox user must have the friend's Tox ID.The Tox
+ID contains the long term public key of the peer (32 bytes) followed by the 4
+byte nospam (see: [`friend_requests`](#friend-requests)) value and a 2 byte XOR
+checksum. The method of sending the Tox ID to others is up to the user and the
+client but the recommended way is to encode it in hexadecimal format and have
+the user manually send it to the friend using another program.
+
+Tox ID:
+
+![Tox ID](img/tox-id.png)
+
+| Length | Contents             |
+|:-------|:---------------------|
+| `32`   | long term public key |
+| `4`    | nospam               |
+| `2`    | checksum             |
+
+The checksum is calculated by XORing the first two bytes of the ID with the
+next two bytes, then the next two bytes until all the 36 bytes have been XORed
+together. The result is then appended to the end to form the Tox ID.
+
+The user must make sure the Tox ID is not intercepted and replaced in transit
+by a different Tox ID, which would mean the friend would connect to a malicious
+person instead of the user, though taking reasonable precautions as this is
+outside the scope of Tox. Tox assumes that the user has ensured that they are
+using the correct Tox ID, belonging to the intended person, to add a friend.
+
 # Messenger
 
 Messenger is the module at the top of all the other modules. It sits on top of
@@ -2980,34 +3010,6 @@ requests but could also be used in other ways. If two friends add each other
 using this function they will connect to each other. Adding a friend using this
 method just adds the friend to `friend_connection` and creates a new friend
 entry in Messenger for the friend.
-
-The Tox ID is used to identify peers so that they can be added as friends in
-Tox. In order to add a friend, a Tox user must have the friend's Tox ID.The Tox
-ID contains the long term public key of the peer (32 bytes) followed by the 4
-byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The
-method of sending the Tox ID to others is up to the user and the client but the
-recommended way is to encode it in hexadecimal format and have the user
-manually send it to the friend using another program.
-
-Tox ID:
-
-![Tox ID](img/tox-id.png)
-
-| Length | Contents             |
-|:-------|:---------------------|
-| `32`   | long term public key |
-| `4`    | nospam               |
-| `2`    | checksum             |
-
-The checksum is calculated by XORing the first two bytes of the ID with the
-next two bytes, then the next two bytes until all the 36 bytes have been XORed
-together. The result is then appended to the end to form the Tox ID.
-
-The user must make sure the Tox ID is not intercepted and replaced in transit
-by a different Tox ID, which would mean the friend would connect to a malicious
-person instead of the user, though taking reasonable precautions as this is
-outside the scope of Tox. Tox assumes that the user has ensured that they are
-using the correct Tox ID, belonging to the intended person, to add a friend.
 
 The second method to add a friend is by using their Tox ID and a message to be
 sent in a friend request. This way of adding friends will try to send a friend
