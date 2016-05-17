@@ -3801,7 +3801,8 @@ replaced eventually. For the sake of maintaining compatibility down the road,
 it is documented here.
 
 The binary encoding of all integer types in the state format is a fixed-width
-byte sequence with the integer encoded in Little Endian.
+byte sequence with the integer encoded in Little Endian unless stated
+otherwise.
 
 | Length | Contents                |
 |:-------|:------------------------|
@@ -3883,7 +3884,8 @@ reconnect to the DHT after a Tox client is restarted.
 |:-------|:--------------|
 | `?`    | List of nodes |
 
-The structure of a node is the same as `Node Info`.
+The structure of a node is the same as `Node Info`. Note: this means that the
+integers stored in these nodes are stored in Big Endian as well.
 
 ### Friends (0x03)
 
@@ -3896,17 +3898,28 @@ sent a friend request to or a peer we've accepted a friend request from.
 
 Friend:
 
+Some of the integers in this structure are stored in Big Endian. This is
+denoted with "(BE)".
+
+Unfortunately, toxcore copies the friend structure directly from memory to the
+state file. This makes the state format platform dependent because the way a
+structure is laid out in memory differs across platforms and compilers. A
+common layout of this structure in memory (GCC on x86 and x86\_64) is described
+below and should be accounted for both when serializing and deserializing the
+state file.
+
 | Length | Contents                                                   |
 |:-------|:-----------------------------------------------------------|
 | `1`    | `uint8_t` Status                                           |
 | `32`   | Long term public key                                       |
 | `1024` | Friend request message as a UTF-8 encoded string           |
-| `2`    | `uint16_t` Size of the friend request message              |
+| `2`    | `uint16_t` Size of the friend request message (BE)         |
 | `128`  | Name as a UTF-8 encoded string                             |
-| `2`    | `uint16_t` Size of the name                                |
+| `2`    | `uint16_t` Size of the name (BE)                           |
 | `1007` | Status message as a UTF-8 encoded string                   |
-| `2`    | `uint16_t` Size of the status message                      |
+| `2`    | `uint16_t` Size of the status message (BE)                 |
 | `1`    | `uint8_t` User status (see also: `USERSTATUS`)             |
+| `3`    | PADDING                                                    |
 | `4`    | `uint32_t` Nospam (only used for sending a friend request) |
 | `8`    | `uint64_t` Last seen time                                  |
 
@@ -3946,7 +3959,8 @@ This section contains a list of TCP relays.
 |:-------|:-------------------|
 | `?`    | List of TCP relays |
 
-The structure of a TCP relay is the same as `Node Info`.
+The structure of a TCP relay is the same as `Node Info`. Note: this means that
+the integers stored in these nodes are stored in Big Endian as well.
 
 ### Path Nodes (0x0B)
 
@@ -3956,7 +3970,8 @@ This section contains a list of path nodes used for onion routing.
 |:-------|:-------------------|
 | `?`    | List of path nodes |
 
-The structure of a path node is the same as `Node Info`.
+The structure of a path node is the same as `Node Info`. Note: this means that
+the integers stored in these nodes are stored in Big Endian as well.
 
 ### EOF (0xFF)
 
