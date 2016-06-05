@@ -4221,21 +4221,12 @@ after adding all nodes from the added nodes list.
 Node Info is encoded with the packet node format. Recall that all lists are
 prefixed with a 64 bit length encoded in big endian.
 
-Output: The buckets, sorted by bucket index. Empty buckets should not appear in
-this list.
+Output: A list of all nodes in the K-buckets.
 
-| Length | Type       | [Contents](#success-result) |
-|:-------|:-----------|:----------------------------|
-| `8`    | Int        | Length of bucket list       |
-| `[0,]` | \[Bucket\] | The bucket list             |
-
-Each bucket is encoded as follows:
-
-| Length | Type          | Contents                         |
-|:-------|:--------------|:---------------------------------|
-| `1`    | Int           | Bucket index                     |
-| `8`    | Int           | Length of nodes list             |
-| `[0,]` | \[Node Info\] | Nodes in the bucket (nodes list) |
+| Length | Type          | [Contents](#success-result) |
+|:-------|:--------------|:----------------------------|
+| `8`    | Int           | Length of node list         |
+| `[0,]` | \[Node Info\] | The node list               |
 
 ## Result
 
