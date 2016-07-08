@@ -391,7 +391,7 @@ local DHT key starts with e.g. `0x80` and the bucketed node key starts with
 the bucket index is 1. If the keys are almost exactly equal and only the last
 bit differs, the bucket index is 255.
 
-### Updating k-buckets
+### Manipulating k-buckets
 
 Any update or lookup operation on a k-buckets instance that involves a single
 node requires us to first compute the bucket index for that node. An update
@@ -414,13 +414,74 @@ Info in the bucket. Removing a node for which no Node Info exists in the
 k-buckets has no effect. Thus, removing a node twice is permitted and has the
 same effect as removing it once.
 
+Iteration order of a k-buckets instance is in order of distance from the base
+key. I.e. the first node seen in iteration is the closest, and the last node is
+the furthest away in terms of the distance metric.
+
 ## DHT node state
 
-Every DHT node contains a Key Pair called the DHT Key Pair.
+Every DHT node contains the following state:
 
-A DHT node also stores a set of Node Infos of nodes that are close to its own
-DHT public key. It uses the [k-buckets](#k-buckets) data structure for this,
-with the local DHT Public Key as the base key.
+-   DHT Key Pair: The Key Pair used to communicate with other DHT nodes. It is
+    immutable throughout the lifetime of the DHT node.
+
+-   DHT Close List: A set of Node Infos of nodes that are close to the DHT
+    Public Key (public part of the DHT Key Pair). The Close List is represented
+    as a [k-buckets](#k-buckets) data structure, with the DHT Public Key as the
+    Base Key.
+
+-   DHT Search List: A list of Public Keys of nodes that the DHT node is
+    searching for, associated with a DHT Search Entry.
+
+A DHT node state is initialised using a Key Pair, which is stored in the state
+as DHT Key Pair and as base key for the Close List. Both the Close and Search
+Lists are initialised to be empty.
+
+### DHT Search Entry
+
+A DHT Search Entry contains a k-buckets instance, which serves the same purpose
+as the Close List, but the base key is the searched node's Public Key. Once the
+searched node is found, it is also stored in the Search Entry. Recall that
+k-buckets never contain a node info for the base key, so it must be stored
+outside the k-buckets instance.
+
+A Search Entry is initialised with the searched-for Public Key. The contained
+k-buckets instance is initialised to be empty.
+
+### Manipulating the DHT node state
+
+Adding a search key to the DHT node state creates an empty entry in the Search
+Nodes list. If a search entry for the public key already existed, the "add"
+operation has no effect.
+
+Removing a search key removes its search entry and all associated data
+structures from memory.
+
+The iteration order over the DHT state is to first process the Close List
+k-buckets, then the Search List entry k-buckets. Each list itself follows the
+iteration order in the k-buckets specification.
+
+The size of the DHT state is defined to be the number of node infos it
+contains. Node infos contained multiple times, e.g. as part of the close list
+and as part of various search entries, are counted as many times as they
+appear.
+
+Search keys do not directly count towards the state size. The state size is
+relevant to later pruning algorithms that decide when to remove a node info and
+when to request a ping from stale nodes. Search keys, once added, are never
+automatically pruned.
+
+Adding a node info to the state is done by adding the node to each k-bucket in
+the state, i.e. the close list and all the k-buckets in the search entries.
+
+When adding a node info to the state, the search entry for the node's public
+key, if it exists, is updated to contain the new node info. All k-buckets that
+already contain the node info will also be updated. See the k-buckets
+specification for the update algorithm.
+
+Removing a node info from the state removes it from all k-buckets. If a search
+entry for the removed node's public key existed, the node info in that search
+entry is unset. The search entry itself is not removed.
 
 ## Self-organisation
 
