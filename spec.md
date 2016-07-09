@@ -289,7 +289,7 @@ The DHT is a self-organizing swarm of all nodes in the Tox network. A node in
 the Tox network is also called "Tox node". When we talk about "peers", we mean
 any node that is not the local node (the subject). This module takes care of
 finding the IP and port of nodes and establishing a route to them directly via
-UDP using [hole punching](#hole-punching) if necessary. The DHT only runs on
+UDP using [hole-punching](#hole-punching) if necessary. The DHT only runs on
 UDP and so is only used if UDP works.
 
 Every node in the Tox DHT has an ephemeral Key Pair called the DHT Key Pair
@@ -586,8 +586,8 @@ bandwidth usage but increase the amount of disconnected nodes that are still
 being stored in the lists. Decreasing these delays would do the opposite.
 
 If the 8 nodes closest to each public key were increased to 16 it would
-increase the bandwidth usage, might increase hole punching efficiency on
-symmetric NATs (more ports to guess from, see Hole punching) and might increase
+increase the bandwidth usage, might increase hole-punching efficiency on
+symmetric NATs (more ports to guess from, see Hole-punching) and might increase
 the reliability. Lowering this number would have the opposite effect.
 
 When receiving a send node packet, toxcore will check if each of the received
@@ -632,10 +632,10 @@ packets.
 
 ### NAT ping packets
 
-Sits inside the DHT request packet.
+Encapsulated in the DHT request packet.
 
-NAT ping packets are used to see if a friend we are not connected to directly
-is online and ready to do the hole punching.
+`NAT ping packet`s are used to check whether a friend we are not connected to
+directly is online and ready to do hole-punching.
 
 #### NAT ping request
 
@@ -645,6 +645,21 @@ is online and ready to do the hole punching.
 | `1`    | `uint8_t` (0x00)         |
 | `8`    | `uint64_t` random number |
 
+Received `NAT ping request` needs to be checked if it is from a friend.
+
+Check is performed by comparing the Public Key from [DHT request
+packet](#dht-request-packets) that given `NAT ping request` was encapsulated in
+with the list of Public Keys of own `friend`s.
+
+If `NAT ping request` is…
+
+-   … from own `friend`, a [`NAT ping response`](#nat-ping-response) with the
+    same `random number` that request has should be sent back via the nodes
+    that know the friend sending the request.
+    -   If there are no known nodes that know the `friend`, packet will
+        be dropped.
+-   … not from own `friend`, packet will be dropped.
+
 #### NAT ping response
 
 | Length | Contents                                                         |
@@ -653,100 +668,143 @@ is online and ready to do the hole punching.
 | `1`    | `uint8_t` (0x01)                                                 |
 | `8`    | `uint64_t` random number (the same that was received in request) |
 
-## Hole punching
+## Hole-punching
 
-For holepunching we assume that people using Tox are on one of 3 types of NAT:
+Mechanism to determine whether hole-punching should be started:
 
-Cone NATs: Assign one whole port to each UDP socket behind the NAT, any packet
-from any IP/port sent to that assigned port from the internet will be forwarded
-to the socket behind it.
+1.  Request from 8 closest to own node peers `IP:port` of friend.
+    [](TODO:_how?)
+2.  At least 4+ of nodes return `IP:port` of the friend.
+3.  Send [DHT ping request](#ping-service) to each of those `IP:port`s.
+4.  If no response is received, start hole-punching.
 
-Restricted Cone NATs: Assign one whole port to each UDP socket behind the NAT.
-However, it will only forward packets from IPs that the UDP socket has sent a
-packet to.
+*The numbers `8` and `4` are used in toxcore and were chosen based on "the
+feel" alone and might not be optimal.*
 
-Symmetric NATs: The worst kind of NAT, they assign a new port for each IP/port
-a packet is sent to. They treat each new peer you send a UDP packet to as a
-`'connection'` and will only forward packets from the IP/port of that
-`'connection'`.
+Before hole-punching is started, a [NAT ping packet](#net-ping-packets) is sent
+to the friend via peers that claim to know the friend. If [NAT ping
+response](#nat-ping-response) with the same random number is received,
+hole-punching should be started.
 
-Holepunching on normal cone NATs is achieved simply through the way in which
-the DHT functions.
+Receiving a `NAT ping response` means that the friend is both online and
+actively searching for us, since that is the only way they would know nodes
+that know us. **Hole-punching will work only if the friend is actively trying
+to connect to us.**
 
-If more than half of the 8 peers closest to the friend in the DHT return an
-IP/port for the friend and we send a ping request to each of the returned
-IP/ports but get no response. If we have sent 4 ping requests to 4 IP/ports
-that supposedly belong to the friend and get no response, then this is enough
-for toxcore to start the hole punching. The numbers 8 and 4 are used in toxcore
-and where chosen based on feel alone and so may not be the best numbers.
+`NAT ping request`s are sent every 3 seconds in toxcore. If no response is
+received for 6 seconds, the hole-punching will stop.
 
-Before starting the hole punching, the peer will send a NAT ping packet to the
-friend via the peers that say they know the friend. If a NAT ping response with
-the same random number is received the hole punching will start.
+Sending `NAT ping request`s in longer intervals might increase the possibility
+of the other node going offline and ping packets sent in the hole-punching
+being sent to a dead peer, but potentially it could decrease bandwidth usage.
+Decreasing the intervals will have the opposite effect.
 
-If a NAT ping request is received, we will first check if it is from a friend.
-If it is not from a friend it will be dropped. If it is from a friend, a
-response with the same 8 byte number as in the request will be sent back via
-the nodes that know the friend sending the request. If no nodes from the friend
-are known, the packet will be dropped.
+For hole-punching we *assume* that people using Tox are on one of 3 types of
+NAT:
 
-Receiving a NAT ping response therefore means that the friend is both online
-and actively searching for us, as that is the only way they would know nodes
-that know us. This is important because hole punching will work only if the
-friend is actively trying to connect to us.
+-   [`Cone NAT`](#cone-nat)
+-   [`Restricted Cone NAT`](#restricted-cone-nat)
+-   [`Symmetric NAT`](#symmetric-nat)
 
-NAT ping requests are sent every 3 seconds in toxcore, if no response is
-received for 6 seconds, the hole punching will stop. Sending them in longer
-intervals might increase the possibility of the other node going offline and
-ping packets sent in the hole punching being sent to a dead peer but decrease
-bandwidth usage. Decreasing the intervals will have the opposite effect.
+There are 3 cases that toxcore can encounter when hole-punching:
 
-There are 2 cases that toxcore handles for the hole punching. The first case is
-if each 4+ peers returned the same IP and port. The second is if the 4+ peers
-returned same IPs but different ports.
+-   4+ close to given Public Key peers returned the [same
+    `IP:port`](#restricted-cone-nat)
+-   4+ close to given Public Key peers returned the [same `IP`, but different
+    `port`](#symmetric-nat)
+-   close to given PK peers returns [different `IP:port`s](#different-ipports)
 
-A third case that may occur is the peers returning different IPs and ports.
-This can only happen if the friend is behind a very restrictive NAT that cannot
-be hole punched or if the peer recently connected to another internet
-connection and some peers still have the old one stored. Since there is nothing
-we can do for the first option it is recommended to just use the most common IP
-returned by the peers and to ignore the other IP/ports.
+### Cone NAT
 
-In the case where the peers return the same IP and port it means that the other
-friend is on a restricted cone NAT. These kind of NATs can be hole punched by
-getting the friend to send a packet to our public IP/port. This means that hole
-punching can be achieved easily and that we should just continue sending DHT
-ping packets regularly to that IP/port until we get a ping response. This will
-work because the friend is searching for us in the DHT and will find us and
-will send us a packet to our public IP/port (or try to with the hole punching),
-thereby establishing a connection.
+Behaviour of the software doing NAT:
 
-For the case where peers do not return the same ports, this means that the
-other peer is on a symmetric NAT. Some symmetric NATs open ports in sequences
-so the ports returned by the other peers might be something like: 1345, 1347,
-1389, 1395. The method to hole punch these NATs is to try to guess which ports
-are more likely to be used by the other peer when they try sending us ping
-requests and send some ping requests to these ports. Toxcore just tries all the
-ports beside each returned port (ex: for the 4 ports previously it would try:
-1345, 1347, 1389, 1395, 1346, 1348, 1390, 1396, 1344, 1346...) getting
-gradually further and further away and, although this works, the method could
-be improved. When using this method toxcore will try up to 48 ports every 3
-seconds until both connect. After 5 tries toxcore doubles this and starts
-trying ports from 1024 (48 each time) along with the previous port guessing.
-This is because I have noticed that this seemed to fix it for some symmetric
-NATs, most likely because a lot of them restart their count at 1024.
+-   Assign one whole port to each UDP socket behind the NAT, any packet from
+    any `IP:port` sent to that assigned port from the internet will be
+    forwarded to the socket behind it.
 
-Increasing the amount of ports tried per second would make the hole punching go
-faster but might DoS NATs due to the large number of packets being sent to
-different IPs in a short amount of time. Decreasing it would make the hole
-punching slower.
+Hole-punching with normal `cone NAT`s is achieved simply through the way in
+which the [DHT](#dht) functions, i.e. we send to the `IP:port` of friend [DHT
+ping request](#ping-service), and we receive [DHT ping
+response](#ping-response-0x01).
+
+### Restricted cone NAT
+
+Behaviour of the software doing NAT:
+
+-   Assign one whole port to each UDP socket behind the NAT. Forward packets
+    only from `IP`s that the UDP socket has sent a packet to.
+
+When 4+ nodes close to us return the same `IP:port` of the friend, it means
+that the friend is on a `restricted cone NAT`.
+
+Hole-punching can be done by getting the friend to send a packet to our public
+`IP:port`. This means that hole-punching can be achieved easily and that we
+should just continue sending [DHT ping packets](#ping-service) regularly to
+that `IP:port` until we get a [DHT ping response](#ping-response-0x01). This
+will work because the friend is searching for us in the DHT. Upon finding us
+friend will send a packet to our public `IP:port` (or try to with the
+hole-punching), thereby establishing a connection.
+
+### Symmetric NAT
+
+*It's the worst.*
+
+Behaviour of the software doing NAT:
+
+-   Assign a new port for each `IP:port` a packet is sent to. Treat each new
+    peer to which an UDP packet is sent to as a `connection`. Forward packets
+    only from the assigned `IP:port` of that `connection` to the socket.
+-   *In case of a bad implementation, crash & burn, making users cry.*
+
+Close to us nodes don't return the same `port` for friend – this means that the
+friend is on a `symmetric NAT`.
+
+Some symmetric NATs open ports in sequences, which could result in ports
+returned by close to us nodes to be e.g. 1345, 1347, 1389, 1395.
+
+Hole-punching with symmetric NATs is done based on guessing which ports are
+more likely to be used by friend when they're trying to send ping request to
+us. [DHT ping requests](#ping-service) are sent to those ports until
+`DHT ping response` is received.
+
+Toxcore tries all the ports, beside each returned port (e.g. for the 4 ports
+previously listed it would try: 1345, 1347, 1389, 1395, 1346, 1348, 1390, 1396,
+1344, 1346...), gradually trying ports further away from ones that close to us
+nodes reported as working.
+
+-   Try up to 48 ports every 3 seconds until connection is established.
+-   After 5 attempts, double (?)range(?) and start trying ports from `1024`, 48
+    at the same time, including previously guessed ports.
+    -   *This seemed to fix it for some symmetric NATs, most likely because a
+        lot of them restart their count at 1024. – `irungentoo`*
+
+Increasing the amount of ports tried per second would make the hole-punching
+happen faster but also has a potential to DoS NATs due to the large number of
+packets being sent to different IPs in a short amount of time. Decreasing the
+number of ports would make the hole punching slower.
+
+*Although this works, the method could be improved.*
 
 This works in cases where both peers have different NATs. For example, if A and
 B are trying to connect to each other: A has a symmetric NAT and B a restricted
 cone NAT. A will detect that B has a restricted cone NAT and keep sending ping
-packets to his one IP/port. B will detect that A has a symmetric NAT and will
-send packets to it to try guessing his ports. If B manages to guess the port A
+packets to B's one `IP:port`. B will detect that A has a symmetric NAT and will
+send packets to it to try guessing A's ports. If B manages to guess the port A
 is sending packets from they will connect together.
+
+### Different `IP:port`s
+
+May occur when peers return different `IP`s and `port`s.
+
+There are 2 cases when this can happen:
+
+-   the friend is behind a very restrictive NAT that cannot be hole-punched
+-   the friend recently connected to another internet connection and some peers
+    still have the outdated information
+
+There is nothing that can be done when very restrictive NAT is in play, thus it
+is recommended to use the most common `IP` returned by the peers and ignore
+other `IP:port`s.
 
 # LAN discovery
 
@@ -791,599 +849,6 @@ ping packet must be sent, and a valid response must be received, before we can
 say that this peer has been found.
 
 LAN discovery is how Tox handles and makes everything work well on LAN.
-
-# Messenger
-
-Messenger is the module at the top of all the other modules. It sits on top of
-`friend_connection` in the hierarchy of toxcore.
-
-Messenger takes care of sending and receiving messages using the connection
-provided by `friend_connection`. The module provides a way for friends to
-connect and makes it usable as an instant messenger. For example, Messenger
-lets users set a nickname and status message which it then transmits to friends
-when they are online. It also allows users to send messages to friends and
-builds an instant messenging system on top of the lower level
-`friend_connection` module.
-
-Messenger offers two methods to add a friend. The first way is to add a friend
-with only their long term public key, this is used when a friend needs to be
-added but for some reason a friend request should not be sent. The friend
-should only be added. This method is most commonly used to accept friend
-requests but could also be used in other ways. If two friends add each other
-using this function they will connect to each other. Adding a friend using this
-method just adds the friend to `friend_connection` and creates a new friend
-entry in Messenger for the friend.
-
-The Tox ID is used to identify peers so that they can be added as friends in
-Tox. In order to add a friend, a Tox user must have the friend's Tox ID.The Tox
-ID contains the long term public key of the peer (32 bytes) followed by the 4
-byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The
-method of sending the Tox ID to others is up to the user and the client but the
-recommended way is to encode it in hexadecimal format and have the user
-manually send it to the friend using another program.
-
-Tox ID:
-
-![Tox ID](img/tox-id.png)
-
-| Length | Contents             |
-|:-------|:---------------------|
-| `32`   | long term public key |
-| `4`    | nospam               |
-| `2`    | checksum             |
-
-The checksum is calculated by XORing the first two bytes of the ID with the
-next two bytes, then the next two bytes until all the 36 bytes have been XORed
-together. The result is then appended to the end to form the Tox ID.
-
-The user must make sure the Tox ID is not intercepted and replaced in transit
-by a different Tox ID, which would mean the friend would connect to a malicious
-person instead of the user, though taking reasonable precautions as this is
-outside the scope of Tox. Tox assumes that the user has ensured that they are
-using the correct Tox ID, belonging to the intended person, to add a friend.
-
-The second method to add a friend is by using their Tox ID and a message to be
-sent in a friend request. This way of adding friends will try to send a friend
-request, with the set message, to the peer whose Tox ID was added. The method
-is similar to the first one, except that a friend request is crafted and sent
-to the other peer.
-
-When a friend connection associated to a Messenger friend goes online, a ONLINE
-packet will be sent to them. Friends are only set as online if an ONLINE packet
-is received.
-
-As soon as a friend goes online, Messenger will stop sending friend requests to
-that friend, if it was sending them, as they are redundant for this friend.
-
-Friends will be set as offline if either the friend connection associated to
-them goes offline or if an OFFLINE packet is received from the friend.
-
-Messenger packets are sent to the friend using the online friend connection to
-the friend.
-
-Should Messenger need to check whether any of the non lossy packets in the
-following list were received by the friend, for example to implement receipts
-for text messages, `net_crypto` can be used. The `net_crypto` packet number,
-used to send the packets, should be noted and then `net_crypto` checked later
-to see if the bottom of the send array is after this packet number. If it is,
-then the friend has received them. Note that `net_crypto` packet numbers could
-overflow after a long time, so checks should happen within 2\*\*32 `net_crypto`
-packets sent with the same friend connection.
-
-Message receipts for action messages and normal text messages are implemented
-by adding the `net_crypto` packet number of each message, along with the
-receipt number, to the top of a linked list that each friend has as they are
-sent. Every Messenger loop, the entries are read from the bottom and entries
-are removed and passed to the client until an entry that refers to a packet not
-yet received by the other is reached, when this happens it stops.
-
-List of Messenger packets:
-
-## `ONLINE`
-
-length: 1 byte
-
-| Length | Contents         |
-|:-------|:-----------------|
-| `1`    | `uint8_t` (0x18) |
-
-Sent to a friend when a connection is established to tell them to mark us as
-online in their friends list. This packet and the OFFLINE packet are necessary
-as `friend_connections` can be established with non-friends who are part of a
-groupchat. The two packets are used to differentiate between these peers,
-connected to the user through groupchats, and actual friends who ought to be
-marked as online in the friendlist.
-
-On receiving this packet, Messenger will show the peer as being online.
-
-## `OFFLINE`
-
-length: 1 byte
-
-| Length | Contents         |
-|:-------|:-----------------|
-| `1`    | `uint8_t` (0x19) |
-
-Sent to a friend when deleting the friend. Prevents a deleted friend from
-seeing us as online if we are connected to them because of a group chat.
-
-On receiving this packet, Messenger will show this peer as offline.
-
-## `NICKNAME`
-
-length: 1 byte to 129 bytes.
-
-| Length     | Contents                       |
-|:-----------|:-------------------------------|
-| `1`        | `uint8_t` (0x30)               |
-| `[0, 128]` | Nickname as a UTF8 byte string |
-
-Used to send the nickname of the peer to others. This packet should be sent
-every time to each friend every time they come online and each time the
-nickname is changed.
-
-## `STATUSMESSAGE`
-
-length: 1 byte to 1008 bytes.
-
-| Length      | Contents                             |
-|:------------|:-------------------------------------|
-| `1`         |  `uint8_t` (0x31)                    |
-| `[0, 1007]` | Status message as a UTF8 byte string |
-
-Used to send the status message of the peer to others. This packet should be
-sent every time to each friend every time they come online and each time the
-status message is changed.
-
-## `USERSTATUS`
-
-length: 2 bytes
-
-| Length | Contents                                          |
-|:-------|:--------------------------------------------------|
-| `1`    | `uint8_t` (0x32)                                  |
-| `1`    | `uint8_t` status (0 = online, 1 = away, 2 = busy) |
-
-Used to send the user status of the peer to others. This packet should be sent
-every time to each friend every time they come online and each time the user
-status is changed.
-
-## `TYPING`
-
-length: 2 bytes
-
-| Length | Contents                                             |
-|:-------|:-----------------------------------------------------|
-| `1`    | `uint8_t` (0x33)                                     |
-| `1`    | `uint8_t` typing status (0 = not typing, 1 = typing) |
-
-Used to tell a friend whether the user is currently typing or not.
-
-## `MESSAGE`
-
-| Length      | Contents                      |
-|:------------|:------------------------------|
-| `1`         | `uint8_t` (0x40)              |
-| `[0, 1372]` | Message as a UTF8 byte string |
-
-Used to send a normal text message to the friend.
-
-## `ACTION`
-
-| Length      | Contents                             |
-|:------------|:-------------------------------------|
-| `1`         | `uint8_t` (0x41)                     |
-| `[0, 1372]` | Action message as a UTF8 byte string |
-
-Used to send an action message (like an IRC action) to the friend.
-
-## `MSI`
-
-| Length | Contents         |
-|:-------|:-----------------|
-| `1`    | `uint8_t` (0x45) |
-| `?`    | data             |
-
-Reserved for Tox AV usage.
-
-## File Transfer Related Packets
-
-### `FILE_SENDREQUEST`
-
-| Length     | Contents                       |
-|:-----------|:-------------------------------|
-| `1`        | `uint8_t` (0x50)               |
-| `1`        | `uint8_t` file number          |
-| `4`        | `uint32_t` file type           |
-| `8`        | `uint64_t` file size           |
-| `32`       | file id (32 bytes)             |
-| `[0, 255]` | filename as a UTF8 byte string |
-
-Note that file type and file size are sent in big endian/network byte format.
-
-### `FILE_CONTROL`
-
-length: 4 bytes if `control_type` isn't seek. 8 bytes if `control_type` is
-seek.
-
-| Length | Contents                  |
-|:-------|:--------------------------|
-| `1`    | `uint8_t` (0x51)          |
-| `1`    | `uint8_t` `send_receive`  |
-| `1`    | `uint8_t` file number     |
-| `1`    | `uint8_t` `control_type`  |
-| `8`    | `uint64_t` seek parameter |
-
-`send_receive` is 0 if the control targets a file being sent (by the peer
-sending the file control), and 1 if it targets a file being received.
-
-`control_type` can be one of: 0 = accept, 1 = pause, 2 = kill, 3 = seek.
-
-The seek parameter is only included when `control_type` is seek (3).
-
-Note that if it is included the seek parameter will be sent in big
-endian/network byte format.
-
-### `FILE_DATA`
-
-length: 2 to 1373 bytes.
-
-| Length      | Contents              |
-|:------------|:----------------------|
-| `1`         | `uint8_t` (0x52)      |
-| `1`         | `uint8_t` file number |
-| `[0, 1371]` | file data piece       |
-
-Files are transferred in Tox using File transfers.
-
-To initiate a file transfer, the friend creates and sends a `FILE_SENDREQUEST`
-packet to the friend it wants to initiate a file transfer to.
-
-The first part of the `FILE_SENDREQUEST` packet is the file number. The file
-number is the number used to identify this file transfer. As the file number is
-represented by a 1 byte number, the maximum amount of concurrent files Tox can
-send to a friend is 256. 256 file transfers per friend is enough that clients
-can use tricks like queueing files if there are more files needing to be sent.
-
-256 outgoing files per friend means that there is a maximum of 512 concurrent
-file transfers, between two users, if both incoming and outgoing file transfers
-are counted together.
-
-As file numbers are used to identify the file transfer, the Tox instance must
-make sure to use a file number that isn't used for another outgoing file
-transfer to that same friend when creating a new outgoing file transfer. File
-numbers are chosen by the file sender and stay unchanged for the entire
-duration of the file transfer. The file number is used by both `FILE_CONTROL`
-and `FILE_DATA` packets to identify which file transfer these packets are for.
-
-The second part of the file transfer request is the file type. This is simply a
-number that identifies the type of file. for example, tox.h defines the file
-type 0 as being a normal file and type 1 as being an avatar meaning the Tox
-client should use that file as an avatar. The file type does not effect in any
-way how the file is transfered or the behavior of the file transfer. It is set
-by the Tox client that creates the file transfers and send to the friend
-untouched.
-
-The file size indicates the total size of the file that will be transfered. A
-file size of `UINT64_MAX` (maximum value in a `uint64_t`) means that the size
-of the file is undetermined or unknown. For example if someone wanted to use
-Tox file transfers to stream data they would set the file size to `UINT64_MAX`.
-A file size of 0 is valid and behaves exactly like a normal file transfer.
-
-The file id is 32 bytes that can be used to uniquely identify the file
-transfer. For example, avatar transfers use it as the hash of the avatar so
-that the receiver can check if they already have the avatar for a friend which
-saves bandwidth. It is also used to identify broken file transfers across
-toxcore restarts (for more info see the file transfer section of tox.h). The
-file transfer implementation does not care about what the file id is, as it is
-only used by things above it.
-
-The last part of the file transfer is the optional file name which is used to
-tell the receiver the name of the file.
-
-When a `FILE_SENDREQUEST` packet is received, the implementation validates and
-sends the info to the Tox client which decides whether they should accept the
-file transfer or not.
-
-To refuse or cancel a file transfer, they will send a `FILE_CONTROL` packet
-with `control_type` 2 (kill).
-
-`FILE_CONTROL` packets are used to control the file transfer. `FILE_CONTROL`
-packets are used to accept/unpause, pause, kill/cancel and seek file transfers.
-The `control_type` parameter denotes what the file control packet does.
-
-The `send_receive` and file number are used to identify a specific file
-transfer. Since file numbers for outgoing and incoming files are not related to
-each other, the `send_receive` parameter is used to identify if the file number
-belongs to files being sent or files being received. If `send_receive` is 0,
-the file number corresponds to a file being sent by the user sending the file
-control packet. If `send_receive` is 1, it corresponds to a file being received
-by the user sending the file control packet.
-
-`control_type` indicates the purpose of the `FILE_CONTROL` packet.
-`control_type` of 0 means that the `FILE_CONTROL` packet is used to tell the
-friend that the file transfer is accepted or that we are unpausing a previously
-paused (by us) file transfer. `control_type` of 1 is used to tell the other to
-pause the file transfer.
-
-If one party pauses a file transfer, that party must be the one to unpause it.
-Should both sides pause a file transfer, both sides must unpause it before the
-file can be resumed. For example, if the sender pauses the file transfer, the
-receiver must not be able to unpause it. To unpause a file transfer,
-`control_type` 0 is used. Files can only be paused when they are in progress
-and have been accepted.
-
-`control_type` 2 is used to kill, cancel or refuse a file transfer. When a
-`FILE_CONTROL` is received, the targeted file transfer is considered dead, will
-immediately be wiped and its file number can be reused. The peer sending the
-`FILE_CONTROL` must also wipe the targeted file transfer from their side. This
-control type can be used by both sides of the transfer at any time.
-
-`control_type` 3, the seek control type is used to tell the sender of the file
-to start sending from a different index in the file than 0. It can only be used
-right after receiving a `FILE_SENDREQUEST` packet and before accepting the file
-by sending a `FILE_CONTROL` with `control_type` 0. When this `control_type` is
-used, an extra 8 byte number in big endian format is appended to the
-`FILE_CONTROL` that is not present with other control types. This number
-indicates the index in bytes from the beginning of the file at which the file
-sender should start sending the file. The goal of this control type is to
-ensure that files can be resumed across core restarts. Tox clients can know if
-they have received a part of a file by using the file id and then using this
-packet to tell the other side to start sending from the last received byte. If
-the seek position is bigger or equal to the size of the file, the seek packet
-is invalid and the one receiving it will discard it.
-
-To accept a file Tox will therefore send a seek packet, if it is needed, and
-then send a `FILE_CONTROL` packet with `control_type` 0 (accept) to tell the
-file sender that the file was accepted.
-
-Once the file transfer is accepted, the file sender will start sending file
-data in sequential chunks from the beginning of the file (or the position from
-the `FILE_CONTROL` seek packet if one was received).
-
-File data is sent using `FILE_DATA` packets. The file number corresponds to the
-file transfer that the file chunks belong to. The receiver assumes that the
-file transfer is over as soon as a chunk with the file data size not equal to
-the maximum size (1371 bytes) is received. This is how the sender tells the
-receiver that the file transfer is complete in file transfers where the size of
-the file is unknown (set to `UINT64_MAX`). The receiver also assumes that if
-the amount of received data equals to the file size received in the
-`FILE_SENDREQUEST`, the file sending is finished and has been successfully
-received. Immediately after this occurs, the receiver frees up the file number
-so that a new incoming file transfer can use that file number. The
-implementation should discard any extra data received which is larger than the
-file size received at the beginning.
-
-In 0 filesize file transfers, the sender will send one `FILE_DATA` packet with
-a file data size of 0.
-
-The sender will know if the receiver has received the file successfully by
-checking if the friend has received the last `FILE_DATA` packet sent
-(containing the last chunk of the file). `Net_crypto` can be used to check
-whether packets sent through it have been received by storing the packet number
-of the sent packet and verifying later in `net_crypto` to see whether it was
-received or not. As soon as `net_crypto` says the other received the packet,
-the file transfer is considered successful, wiped and the file number can be
-reused to send new files.
-
-`FILE_DATA` packets should be sent as fast as the `net_crypto` connection can
-handle it respecting its congestion control.
-
-If the friend goes offline, all file transfers are cleared in toxcore. This
-makes it simpler for toxcore as it does not have to deal with resuming file
-transfers. It also makes it simpler for clients as the method for resuming file
-transfers remains the same, even if the client is restarted or toxcore loses
-the connection to the friend because of a bad internet connection.
-
-## Group Chat Related Packets
-
-| Packet ID | Packet Name         |
-|:----------|:--------------------|
-| 0x60      | `INVITE_GROUPCHAT`  |
-| 0x61      | `ONLINE_PACKET`     |
-| 0x62      | `DIRECT_GROUPCHAT`  |
-| 0x63      | `MESSAGE_GROUPCHAT` |
-| 0xC7      | `LOSSY_GROUPCHAT`   |
-
-Messenger also takes care of saving the friends list and other friend
-information so that it's possible to close and start toxcore while keeping all
-your friends, your long term key and the information necessary to reconnect to
-the network.
-
-Important information messenger stores includes: the long term private key, our
-current nospam value, our friends' public keys and any friend requests the user
-is currently sending. The network DHT nodes, TCP relays and some onion nodes
-are stored to aid reconnection.
-
-In addition to this, a lot of optional data can be stored such as the usernames
-of friends, our current username, status messages of friends, our status
-message, etc... can be stored. The exact format of the toxcore save is
-explained later.
-
-The TCP server is run from the toxcore messenger module if the client has
-enabled it. TCP server is usually run independently as part of the bootstrap
-node package but it can be enabled in clients. If it is enabled in toxcore,
-Messenger will add the running TCP server to the TCP relay.
-
-Messenger is the module that transforms code that can connect to friends based
-on public key into a real instant messenger.
-
-# TCP client
-
-`TCP client` is the client for the TCP server. It establishes and keeps a
-connection to the TCP server open.
-
-All the packet formats are explained in detail in `TCP server` so this section
-will only cover `TCP client` specific details which are not covered in the
-`TCP server` documentation.
-
-TCP clients can choose to connect to TCP servers through a proxy. Most common
-types of proxies (SOCKS, HTTP) work by establishing a connection through a
-proxy using the protocol of that specific type of proxy. After the connection
-through that proxy to a TCP server is established, the socket behaves from the
-point of view of the application exactly like a TCP socket that connects
-directly to a TCP server instance. This means supporting proxies is easy.
-
-`TCP client` first establishes a TCP connection, either through a proxy or
-directly to a TCP server. It uses the DHT public key as its long term key when
-connecting to the TCP server.
-
-It establishes a secure connection to the TCP server. After establishing a
-connection to the TCP server, and when the handshake response has been received
-from the TCP server, the toxcore implementation immediately sends a ping
-packet. Ideally the first packets sent would be routing request packets but
-this solution aids code simplicity and allows the server to confirm the
-connection.
-
-Ping packets, like all other data packets, are sent as encrypted packets.
-
-Ping packets are sent by the toxcore TCP client every 30 seconds with a timeout
-of 10 seconds, the same interval and timeout as toxcore TCP server ping
-packets. They are the same because they accomplish the same thing.
-
-`TCP client` must have a mechanism to make sure important packets (routing
-requests, disconnection notifications, ping packets, ping response packets)
-don't get dropped because the TCP socket is full. Should this happen, the TCP
-client must save these packets and prioritize sending them, in order, when the
-TCP socket on the server becomes available for writing again. `TCP client` must
-also take into account that packets might be bigger than the number of bytes it
-can currently write to the socket. In this case, it must save the bytes of the
-packet that it didn't write to the socket and write them to the socket as soon
-as the socket allows so that the connection does not get broken. It must also
-assume that it may receive only part of an encrypted packet. If this occurs it
-must save the part of the packet it has received and wait for the rest of the
-packet to arrive before handling it.
-
-`TCP client` can be used to open up a route to friends who are connected to the
-TCP server. This is done by sending a routing request to the TCP server with
-the DHT public key of the friend. This tells the server to register a
-`connection_id` to the DHT public key sent in the packet. The server will then
-respond with a routing response packet. If the connection was accepted, the
-`TCP client` will store the `connection id` for this connection. The
-`TCP client` will make sure that routing response packets are responses to a
-routing packet that it sent by storing that it sent a routing packet to that
-public key and checking the response against it. This prevents the possibility
-of a bad TCP server exploiting the client.
-
-The `TCP client` will handle connection notifications and disconnection
-notifications by alerting the module using it that the connection to the peer
-is up or down.
-
-`TCP client` will send a disconnection notification to kill a connection to a
-friend. It must send a disconnection notification packet regardless of whether
-the peer was online or offline so that the TCP server will unregister the
-connection.
-
-Data to friends can be sent through the TCP relay using OOB (out of band)
-packets and connected connections. To send an OOB packet, the DHT public key of
-the friend must be known. OOB packets are sent in blind and there is no way to
-query the TCP relay to see if the friend is connected before sending one. OOB
-packets should be sent when the connection to the friend via the TCP relay
-isn't in an connected state but it is known that the friend is connected to
-that relay. If the friend is connected via the TCP relay, then normal data
-packets must be sent as they are smaller than OOB packets.
-
-OOB recv and data packets must be handled and passed to the module using it.
-
-# TCP connections
-
-`TCP_connections` takes care of handling multiple TCP client instances to
-establish a reliable connection via TCP relays to a friend. Connecting to a
-friend with only one relay would not be very reliable, so `TCP_connections`
-provides the level of abstraction needed to manage multiple relays. For
-example, it ensures that if a relay goes down, the connection to the peer will
-not be impacted. This is done by connecting to the other peer with more than
-one relay.
-
-`TCP_connections` is above [`TCP client`](#tcp-client) and below `net_crypto`.
-
-A TCP connection in `TCP_connections` is defined as a connection to a peer
-though one or more TCP relays. To connect to another peer with
-`TCP_connections`, a connection in `TCP_connections` to the peer with DHT
-public key X will be created. Some TCP relays which we know the peer is
-connected to will then be associated with that peer. If the peer isn't
-connected directly yet, these relays will be the ones that the peer has sent to
-us via the onion module. The peer will also send some relays it is directly
-connected to once a connection is established, however, this is done by another
-module.
-
-`TCP_connections` has a list of all relays it is connected to. It tries to keep
-the number of relays it is connected to as small as possible in order to
-minimize load on relays and lower bandwidth usage for the client. The desired
-number of TCP relay connections per peer is set to 3 in toxcore with the
-maximum number set to 6. The reason for these numbers is that 1 would mean no
-backup relays and 2 would mean only 1 backup. To be sure that the connection is
-reliable 3 seems to be a reasonable lower bound. The maximum number of 6 is the
-maximum number of relays that can be tied to each peer. If 2 peers are
-connected each to the same 6+ relays and they both need to be connected to that
-amount of relays because of other friends this is where this maximum comes into
-play. There is no reason why this number is 6 but in toxcore it has to be at
-least double than the desired number (3) because the code assumes this.
-
-If necessary, `TCP_connections` will connect to TCP relays to use them to send
-onion packets. This is only done if there is no UDP connection to the network.
-When there is a UDP connection, packets are sent with UDP only because sending
-them with TCP relays can be less reliable. It is also important that we are
-connected at all times to some relays as these relays will be used by TCP only
-peers to initiate a connection to us.
-
-In toxcore, each client is connected to 3 relays even if there are no TCP peers
-and the onion is not needed. It might be optimal to only connect to these
-relays when toxcore is initializing as this is the only time when peers will
-connect to us via TCP relays we are connected to. Due to how the onion works,
-after the initialization phase, where each peer is searched in the onion and
-then if they are found the info required to connect back (DHT pk, TCP relays)
-is sent to them, there should be no more peers connecting to us via TCP relays.
-This may be a way to further reduce load on TCP relays, however, more research
-is needed before it is implemented.
-
-`TCP_connections` picks one relay and uses only it for sending data to the
-other peer. The reason for not picking a random connected relay for each packet
-is that it severely deteriorates the quality of the link between two peers and
-makes performance of lossy video and audio transmissions really poor. For this
-reason, one relay is picked and used to send all data. If for any reason no
-more data can be sent through that relay, the next relay is used. This may
-happen if the TCP socket is full and so the relay should not necessarily be
-dropped if this occurs. Relays are only dropped if they time out or if they
-become useless (if the relay is one too many or is no longer being used to
-relay data to any peers).
-
-`TCP_connections` in toxcore also contains a mechanism to make connections go
-to sleep. TCP connections to other peers may be put to sleep if the connection
-to the peer establishes itself with UDP after the connection is established
-with TCP. UDP is the method preferred by `net_crypto` to communicate with other
-peers. In order to keep track of the relays which were used to connect with the
-other peer in case the UDP connection fails, they are saved by
-`TCP_connections` when the connection is put to sleep. Any relays which were
-only used by this redundant connection are saved then disconnected from. If the
-connection is awakened, the relays are reconnected to and the connection is
-reestablished. Putting a connection to sleep is the same as saving all the
-relays used by the connection and removing the connection. Awakening the
-connection is the same as creating a new connection with the same parameters
-and restoring all the relays.
-
-A method to detect potentially dysfunctional relays that try to disrupt the
-network by lying that they are connecting to a peer when they are not or that
-maliciously drop all packets should be considered. Toxcore doesn't currently
-implement such a system and adding one requires more research and likely also
-requires extending the protocol.
-
-When TCP connections connects to a relay it will create a new
-[`TCP_client`](#tcp-client) instance for that relay. At any time if the
-`TCP_client` instance reports that it has disconnected, the TCP relay will be
-dropped. Once the TCP relay reports that it is connected, `TCP_connections`
-will find all the connections that are associated to the relay and announce to
-the relay that it wants to connect to each of them with routing requests. If
-the relay reports that the peer for a connection is online, the connection
-number and relay will be used to send data in that connection with data
-packets. If the peer isn't reported as online but the relay is associated to a
-connection, TCP OOB (out of band) packets will be used to send data instead of
-data packets. TCP OOB packets are used in this case since the relay most likely
-has the peer connected but it has not sent a routing request to connect to us.
-
-`TCP_connections` is used as the bridge between individual `TCP_client`
-instances and `net_crypto`, or the bridge between individual connections and
-something that requires an interface that looks like one connection.
 
 # TCP server
 
@@ -1808,580 +1273,182 @@ connection it will discard it.
 Why did I use different packet ids for all packets when some are only sent by
 the client and some only by the server? It's less confusing.
 
-# Friend connection
-
-`friend_connection` is the module that sits on top of the DHT, onion and
-`net_crypto` modules and takes care of linking the 3 together.
-
-Friends in `friend_connection` are represented by their real public key. When a
-friend is added in `friend_connection`, an onion search entry is created for
-that friend. This means that the onion module will start looking for this
-friend and send that friend their DHT public key, and the TCP relays it is
-connected to, in case a connection is only possible with TCP.
-
-Once the onion returns the DHT public key of the peer, the DHT public key is
-saved, added to the DHT friends list and a new `net_crypto` connection is
-created. Any TCP relays returned by the onion for this friend are passed to the
-`net_crypto` connection.
-
-If the DHT establishes a direct UDP connection with the friend,
-`friend_connection` will pass the IP/port of the friend to `net_crypto` and
-also save it to be used to reconnect to the friend if they disconnect.
-
-If `net_crypto` finds that the friend has a different DHT public key, which can
-happen if the friend restarted their client, `net_crypto` will pass the new DHT
-public key to the onion module and will remove the DHT entry for the old DHT
-public key and replace it with the new one. The current `net_crypto` connection
-will also be killed and a new one with the correct DHT public key will be
-created.
-
-When the `net_crypto` connection for a friend goes online, `friend_connection`
-will tell the onion module that the friend is online so that it can stop
-spending resources looking for the friend. When the friend connection goes
-offline, `friend_connection` will tell the onion module so that it can start
-looking for the friend again.
-
-There are 2 types of data packets sent to friends with the `net_crypto`
-connection handled at the level of `friend_connection`, Alive packets and TCP
-relay packets. Alive packets are packets with the packet id or first byte of
-data (only byte in this packet) being 16. They are used in order to check if
-the other friend is still online. `net_crypto` does not have any timeout when
-the connection is established so timeouts are caught using this packet. In
-toxcore, this packet is sent every 8 seconds. If none of these packets are
-received for 32 seconds, the connection is timed out and killed. These numbers
-seem to cause the least issues and 32 seconds is not too long so that, if a
-friend times out, toxcore won't falsely see them online for too long. Usually
-when a friend goes offline they have time to send a disconnect packet in the
-`net_crypto` connection which makes them appear offline almost instantly.
-
-The timeout for when to stop retrying to connect to a friend by creating new
-`net_crypto` connections when the old one times out in toxcore is the same as
-the timeout for DHT peers (122 seconds). However, it is calculated from the
-last time a DHT public key was received for the friend or time the friend's
-`net_crypto` connection went offline after being online. The highest time is
-used to calculate when the timeout is. `net_crypto` connections will be
-recreated (if the connection fails) until this timeout.
-
-`friend_connection` sends a list of 3 relays (the same number as the target
-number of TCP relay connections in `TCP_connections`) to each connected friend
-every 5 minutes in toxcore. Immediately before sending the relays, they are
-associated to the current `net_crypto->TCP_connections` connection. This
-facilitates connecting the two friends together using the relays as the friend
-who receives the packet will associate the sent relays to the `net_crypto`
-connection they received it from. When both sides do this they will be able to
-connect to each other using the relays. The packet id or first byte of the
-packet of share relay packets is 0x11. This is then followed by some TCP relays
-stored in packed node format.
-
-| Length   | Contents                                   |
-|:---------|:-------------------------------------------|
-| `1`      | `uint8_t` (0x11)                           |
-| variable | TCP relays in packed node format (see DHT) |
-
-If local IPs are received as part of the packet, the local IP will be replaced
-with the IP of the peer that sent the relay. This is because we assume this is
-the best way to attempt to connect to the TCP relay. If the peer that sent the
-relay is using a local IP, then the sent local IP should be used to connect to
-the relay.
-
-For all other data packets, are passed by `friend_connection` up to the upper
-Messenger module. It also separates lossy and lossless packets from
-`net_crypto`.
-
-Friend connection takes care of establishing the connection to the friend and
-gives the upper messenger layer a simple interface to receive and send
-messages, add and remove friends and know if a friend is connected (online) or
-not connected (offline).
-
-# Friend requests
-
-When a Tox user adds someone with Tox, toxcore will try sending a friend
-request to that person. A friend request contains the long term public key of
-the sender, a nospam number and a message.
-
-Transmitting the long term public key is the primary goal of the friend request
-as it is what the peer needs to find and establish a connection to the sender.
-The long term public key is what the receiver adds to his friends list if he
-accepts the friend request.
-
-The nospam is a number used to prevent someone from spamming the network with
-valid friend requests. It makes sure that the only people who have seen the Tox
-ID of a peer are capable of sending them a friend request. The nospam is one of
-the components of the Tox ID.
-
-The nospam is a number or a list of numbers set by the peer, only received
-friend requests that contain a nospam that was set by the peer are sent to the
-client to be accepted or refused by the user. The nospam prevents random peers
-in the network from sending friend requests to non friends. The nospam is not
-long enough to be secure meaning an extremely resilient attacker could manage
-to send a spam friend request to someone. 4 bytes is large enough to prevent
-spam from random peers in the network. The nospam could also allow Tox users to
-issue different Tox IDs and even change Tox IDs if someone finds a Tox ID and
-decides to send it hundreds of spam friend requests. Changing the nospam would
-stop the incoming wave of spam friend requests without any negative effects to
-the users friends list. For example if users would have to change their public
-key to prevent them from receiving friend requests it would mean they would
-have to essentially abandon all their current friends as friends are tied to
-the public key. The nospam is not used at all once the friends have each other
-added which means changing it won't have any negative effects.
-
-Friend request:
-
-    [uint32_t nospam][Message (UTF8) 1 to ONION_CLIENT_MAX_DATA_SIZE bytes]
-
-Friend request packet when sent as an onion data packet:
-
-    [uint8_t (32)][Friend request]
-
-Friend request packet when sent as a `net_crypto` data packet (If we are
-directly connected to the peer because of a group chat but are not friends with
-them):
-
-    [uint8_t (18)][Friend request]
-
-When a friend is added to toxcore with their Tox ID and a message, the friend
-is added in `friend_connection` and then toxcore tries to send friend requests.
-
-When sending a friend request, toxcore will check if the peer which a friend
-request is being sent to is already connected to using a `net_crypto`
-connection which can happen if both are in the same group chat. If this is the
-case the friend request will be sent as a `net_crypto` packet using that
-connection. If not, it will be sent as an onion data packet.
-
-Onion data packets contain the real public key of the sender and if a
-`net_crypto` connection is established it means the peer knows our real public
-key. This is why the friend request does not need to contain the real public
-key of the peer.
-
-Friend requests are sent with exponentially increasing interval of 2 seconds, 4
-seconds, 8 seconds, etc... in toxcore. This is so friend requests get resent
-but eventually get resent in intervals that are so big that they essentially
-expire. The sender has no way of knowing if a peer refuses a friend requests
-which is why friend requests need to expire in some way. Note that the interval
-is the minimum timeout, if toxcore cannot send that friend request it will try
-again until it manages to send it. One reason for not being able to send the
-friend request would be that the onion has not found the friend in the onion
-and so cannot send an onion data packet to them.
-
-Received friend requests are passed to the client, the client is expected to
-show the message from the friend request to the user and ask the user if they
-want to accept the friend request or not. Friend requests are accepted by
-adding the peer sending the friend request as a friend and refused by simply
-ignoring it.
-
-Friend requests are sent multiple times meaning that in order to prevent the
-same friend request from being sent to the client multiple times toxcore keeps
-a list of the last real public keys it received friend requests from and
-discards any received friend requests that are from a real public key that is
-in that list. In toxcore this list is a simple circular list. There are many
-ways this could be improved and made more efficient as a circular list isn't
-very efficient however it has worked well in toxcore so far.
-
-Friend requests from public keys that are already added to the friends list
-should also be discarded.
-
-# Group
-
-Group chats in Tox work by temporarily adding some peers (up to 4) present in
-the group chat as temporary `friend_connection` friends, that are deleted when
-the group chat is exited.
-
-Each peer in the group chat is identified by their real long term public key
-however peers transmit their DHT public keys to each other via the group chat
-in order to speed up the connection by making it unnecessary for the peers to
-find each others DHT public keys with the onion which would happen if they
-would have added themselves as normal friends.
-
-The upside of using `friend_connection` is that group chats do not have to deal
-with things like hole punching, peers only on TCP or other low level networking
-things. The downside however is that every single peer knows each others real
-long term public key and DHT public key which means these group chats should
-only be used between friends.
-
-To connect to each other, two peers must have the other added to their list of
-friend connections. This is not a problem if the group chat has an equal or
-smaller number of participants than 5 as each of the 5 peers will have the 4
-others added to their list of friend connections. When there are more peers
-there must be a way to ensure that peers will manage to connect to other
-groupchat peers.
-
-Since the maximum number of peers per groupchat that will be connected to with
-friend connections is 4, if all peers in the groupchat are arranged in a
-perfect circle and each peer connects to the 2 peers that are the closest to
-the right of them and the 2 peers that are closest to the left of them, the
-peers should form a well connected circle of peers.
-
-Group chats in toxcore do this by subtracting the real long term public key of
-the peer with all the others in the group (our PK - other peer PK) and finding
-the two peers for which the result of this operation is the smallest. The
-operation is then inversed (other peer PK - our PK) and this operation is done
-again with all the public keys of the peers in the group. The 2 peers for which
-the result is again the smallest are picked.
-
-This gives 4 peers that are then added as a friend connection and associated to
-the group. If every peer in the group does this, they will form a circle of
-perfectly connected peers.
-
-Once the peers are connected to each other in a circle they relay each others
-messages. Every time a peer leaves the group or a new peer joins each member of
-the chat will recalculate the peers they should connect to.
-
-To join a group chat the peer must first be invited to it by their friend. To
-make a groupchat the peer will first create a groupchat and then invite people
-to this group chat. Once their friends are in the group chat they can invite
-their other friends to the chat and so on.
-
-To create a group chat the peer will generate a random 32 byte id that will be
-used to uniquely identify this group chat. 32 bytes is enough so that when
-randomly generated with a secure random number generator every groupchat ever
-created will have a different id. The goal of this 32 byte id is so that peers
-have a way of identifying each group chat so that they can prevent themselves
-from joining a groupchat twice for example.
-
-The groupchat will also have an unsigned 1 byte type. This type indicates what
-kind of groupchat the groupchat is, the current types are:
-
-0: text 1: audio
-
-Text groupchats are text only while audio indicates that the groupchat supports
-sending audio to it as well as text.
-
-The groupchat will also be identified by a unique unsigned 2 byte integer which
-in toxcore corresponds to the index of the groupchat in the array it is being
-stored in. Every groupchat in the current instance must have a different
-number. This number is used by groupchat peers that are directly connected to
-us to tell us which packets are for which groupchat. This is why every
-groupchat packet contains a groupchat number as part of them. Putting a 32 byte
-groupchat id in each packet would increase bandwidth waste by a lot which is
-the reason why groupchat numbers are used instead.
-
-Using the group number as the index of the array used to store the groupchat
-instances is recommended because this kind of access is usually most efficient
-and it ensures that each groupchat has a unique group number.
-
-When creating a new groupchat, the peer will add themselves as a groupchat peer
-with a peer number of 0 and their own long term public key and DHT public key.
-
-Invite packets:
-
-Invite packet:
-
-| Length | Contents                |
-|:-------|:------------------------|
-| `1`    | `uint8_t` (0x60)        |
-| `1`    | `uint8_t` (0x00)        |
-| `2`    | `uint16_t` group number |
-| `33`   | Group chat identifier   |
-
-A group chat identifier consists of a 1-byte type and a 32-byte ID
-concatenated.
-
-Response packet
-
-| Length | Contents                        |
-|:-------|:--------------------------------|
-| `1`    | `uint8_t` (0x60)                |
-| `1`    | `uint8_t` (0x01)                |
-| `2`    | `uint16_t` group number (local) |
-| `2`    | `uint16_t` group number to join |
-| `33`   | Group chat identifier           |
-
-To invite a friend to a group chat, an invite packet is sent to the friend.
-These packets are sent using Messenger (if you look at the Messenger packet id
-section, all the groupchat packet ids are in there). Note that all numbers like
-all other numbers sent using Tox packets are sent in big endian format.
-
-The group chat number is as explained above, the number used to uniquely
-identify the groupchat instance from all the other groupchat instances the peer
-has. It is sent in the invite packet because it is needed by the friend in
-order to send back groupchat related packets.
-
-What follows is the 1 byte type with the 32 byte groupchat id appended to it.
-
-To refuse the invite, the friend receiving it will simply ignore and discard
-it.
-
-To accept the invite, the friend will create their own groupchat instance with
-the 32 byte groupchat id and 1 byte type sent in the request and send a invite
-response packet back. The friend will also add the one who sent the invite as a
-temporary invited groupchat connection.
-
-The first group number in the response packet is the group number of the
-groupchat the invited friend just created. The second group number is the group
-chat number that was sent in the invite request. What follows is the 1 byte
-type and 32 byte groupchat id that were sent in the invite request.
-
-When a peer receives an invite response packet they will check if the group id
-sent back corresponds to the group id of the groupchat with the group number
-also sent back. If everything is ok, a new peer number will be generated for
-the peer that sent the invite response packet. Then the peer with their
-generated peer number, their long term public key and DHT public key will be
-added to the peer list of the groupchat. A new peer packet will also be sent to
-tell everyone in the group chat about the new peer. The peer will also be added
-as a temporary invited groupchat connection.
-
-Peer numbers are used to uniquely identify each peer in the group chat. They
-are used in groupchat message packets so that peers receiving them can know who
-or which groupchat peer sent them. As groupchat packets are relayed, they must
-contain something that is used by others to identify the sender. Since putting
-a 32 byte public key in each packet would be wasteful a 2 byte peer number is
-instead used. Each peer in the groupchat has a unique peer number. Toxcore
-generates each peer number randomly but makes sure newly generated peer numbers
-are not equal to current ones already used by other peers in the group chat. If
-two peers join the groupchat from two different endpoints there is a small
-possibility that both will be given the same peer number however this
-possibility is low enough in practice that is is not an issue.
-
-Temporary invited groupchat connections are groupchat connections to the
-groupchat inviter used by groupchat peers to bootstrap themselves the the
-groupchat. They are the same thing as connections to groupchat peers via friend
-connections except that they are discarded after the peer is fully connected to
-the group chat.
-
-Peer online packet:
-
-| Length | Contents                        |
-|:-------|:--------------------------------|
-| `1`    | `uint8_t` (0x61)                |
-| `2`    | `uint16_t` group number (local) |
-| `33`   | Group chat identifier           |
-
-Peer leave packet:
-
-| Length | Contents                        |
-|:-------|:--------------------------------|
-| `1`    | `uint8_t` (0x62)                |
-| `2`    | `uint16_t` group number (local) |
-| `1`    | `uint8_t` (0x01)                |
-
-For a groupchat connection to work, both peers in the groupchat must be
-attempting to connect directly to each other.
-
-Groupchat connections are established when both peers who want to connect to
-each other either create a new friend connection to connect to each other or
-reuse an exiting friend connection that connects them together (if they are
-friends or already are connected together because of another group chat).
-
-As soon as the connection to the other peer is opened, a peer online packet is
-sent to the peer. The goal of the online packet is to tell the peer that we
-want to establish the groupchat connection with them and tell them the
-groupchat number of our groupchat instance. The peer online packet contains the
-group number and the group type and 32 byte groupchat id. The group number is
-the group number the peer has for the group with the group id sent in the
-packet.
-
-When both sides send a online packet to the other peer, a connection is
-established.
-
-When an online packet is received, the group number to communicate with the
-group is saved. If the connection to the peer is already established (an online
-packet has been already received) then the packet is dropped. If there is no
-group connection to that peer being established, the packet is dropped. If this
-is the first group connection to that group we establish, a peer query packet
-is sent. This is so we can get the list of peers from the group.
-
-The peer leave packet is sent to the peer right before killing a group
-connection. It is only used to tell the other side that the connection is dead
-if the friend connection is used for other uses than the group chat (another
-group chat, for a connection to a friend). If not, then the other peer will see
-the friend connection go offline which will prompt them to stop using it and
-kill the group connection tied to it.
-
-Peer query packet:
-
-| Length | Contents                |
-|:-------|:------------------------|
-| `1`    | `uint8_t` (0x62)        |
-| `2`    | `uint16_t` group number |
-| `1`    | `uint8_t` (0x08)        |
-
-Peer response packet:
-
-| Length   | Contents                                   |
-|:---------|:-------------------------------------------|
-| `1`      | `uint8_t` (0x62)                           |
-| `2`      | `uint16_t` group number                    |
-| `1`      | `uint8_t` (0x09)                           |
-| variable |  Repeated times number of peers: Peer info |
-
-The Peer info structure is as follows:
-
-| Length     | Contents               |
-|:-----------|:-----------------------|
-| `2`        | `uint16_t` peer number |
-| `32`       | Long term public key   |
-| `32`       | DHT public key         |
-| `1`        | `uint8_t` Name length  |
-| `[0, 255]` | Name                   |
-
-Title response packet:
-
-| Length   | Contents                |
-|:---------|:------------------------|
-| `1`      | `uint8_t` (0x62)        |
-| `2`      | `uint16_t` group number |
-| `1`      | `uint8_t` (0x0a)        |
-| variable | Title                   |
-
-Message packets:
-
-| Length   | Contents                                          |
-|:---------|:--------------------------------------------------|
-| `1`      | `uint8_t` (0x63)                                  |
-| `2`      | `uint16_t` group number                           |
-| `2`      | `uint16_t` peer number                            |
-| `4`      | `uint32_t` message number                         |
-| `1`      | `uint8_t` with a value representing id of message |
-| variable | Data                                              |
-
-Lossy Message packets:
-
-| Length   | Contents                                          |
-|:---------|:--------------------------------------------------|
-| `1`      | `uint8_t` (0xc7)                                  |
-| `2`      | `uint16_t` group number                           |
-| `2`      | `uint16_t` peer number                            |
-| `4`      | `uint16_t` message number                         |
-| `1`      | `uint8_t` with a value representing id of message |
-| variable | Data                                              |
-
-If a peer query packet is received, the receiver takes his list of peers and
-creates a peer response packet which is then sent to the other peer. If there
-are too many peers in the group chat and the peer response packet would be
-larger than the maximum size of friend connection packets (1373 bytes), more
-than one peer response packet is sent back. A Title response packet is also
-sent back. This is how the peer that joins a group chat finds out the list of
-peers in the group chat and the title of the group chat right after joining.
-
-Peer response packets are straightforward and contain the information for each
-peer (peer number, real public key, DHT public key, name) appended to each
-other. The title response is also straight forward.
-
-Both the maximum length of groupchat peer names and the groupchat title is 128
-bytes. This is the same maximum length as names in all of toxcore.
-
-When a peer receives the peer response packet(s), they will add each of the
-received peers to their groupchat peer list, find the 4 closest peers to them
-and create groupchat connections to them as was explained previously.
-
-To find their peer number, the peer will find themselves in the list of
-received peers and use the peer number assigned to them as their own.
-
-Message packets are used to send messages to all peers in the groupchat. To
-send a message packet, a peer will first take their peer number and the message
-they want to send. Each message packet sent will have a message number that is
-equal to the last message number sent + 1. Like all other numbers (group chat
-number, peer number) in the packet, the message number in the packet will be in
-big endian format. When a Message packet is received, the peer receiving it
-will take the message number in the packet and see if it is bigger than the one
-it has saved for the peer with peer number. If this is the first Message packet
-being received for this peer then this check is omitted. The message number is
-used to know if a Message packet was already received and relayed to prevent
-packets from looping around the groupchat. If the message number check says
-that the packet was already received, then the packet is discarded. If it was
-not already received, a Message packet with the message is sent (relayed) to
-all current group connections (normal groupchat connections + temporary invited
-groupchat connections) except the one that it was received from. The only thing
-that should change in the Message packet as it is relayed is the group number.
-
-## Message ids
-
-### ping (0x00)
-
-Sent approximately every 60 seconds by every peer. Contains no data.
-
-### `new_peer` (0x10)
-
-Tell everyone about a new peer in the chat.
-
-| Length | Contents               |
-|:-------|:-----------------------|
-| `2`    | `uint16_t` Peer number |
-| `32`   | Long term public key   |
-| `32`   | DHT public key         |
-
-### `kill_peer` (0x11)
-
-| Length | Contents               |
-|:-------|:-----------------------|
-| `2`    | `uint16_t` Peer number |
-
-### Name change (0x30)
-
-| Length   | Contents       |
-|:---------|:---------------|
-| variable | Name (namelen) |
-
-### Groupchat title change (0x31)
-
-| Length   | Contents         |
-|:---------|:-----------------|
-| variable | Title (titlelen) |
-
-### Chat message (0x40)
-
-| Length   | Contents             |
-|:---------|:---------------------|
-| variable | Message (messagelen) |
-
-### Action (/me) (0x41)
-
-| Length   | Contents             |
-|:---------|:---------------------|
-| variable | Message (messagelen) |
-
-Ping messages must be sent every 60 seconds by every peer. This is how other
-peers know that the peers are still alive.
-
-When a new peer joins, the peer which invited the joining peer will send a new
-peer message to warn everyone that there is a new peer in the chat. When a new
-peer message is received, the peer in the packet must be added to the peer
-list.
-
-Kill peer messages are used to indicate that a peer has quit the group chat. It
-is sent by the one quitting the group chat right before they quit it.
-
-name change messages are used to change or set the name of the peer sending it.
-They are also sent by a joining peer right after receiving the list of peers in
-order to tell others what their name is.
-
-title change packets are used to change the title of the group chat and can be
-sent by anyone in the group chat.
-
-Chat and action messages are used by the group chat peers to send messages to
-others in the group chat.
-
-Lossy message packets are used to send audio packets to others in audio group
-chats. Lossy packets work the same way as normal relayed groupchat messages in
-that they are relayed to everyone in the group chat until everyone has them.
-
-Some differences with them though is that first of all the message number is a
-2 byte integer. If I were to improve the groupchats protocol I would make the
-message number for normal message packets 2 bytes. 1 byte means only 256
-packets can be received at the same time. With the delays in groupchats and 256
-packets corresponding to less than a high quality video frame it would not
-work. This is why 2 bytes was chosen.
-
-Note that this message number like all other numbers in the packet are in big
-endian format.
-
-When receiving a lossy packet the peer will first check if it was already
-received. If it wasn't, the packet will be added to the list of received
-packets and then the packet will be passed to its handler and then sent to the
-2 closest connected groupchat peers that are not the sender. The reason for it
-to be 2 instead of 4 (well 3 if we are not the original sender) for normal
-message packets is that it reduces bandwidth usage without lowering the quality
-of the received audio stream via lossy packets. Message packets also are sent
-relatively rarely, enough so that changing it to 2 would have a minimal impact
-in bandwidth usage.
-
-To check if a packet was received, the last up to 65536 received packet numbers
-are stored, current groups store the last 256 packet numbers however that is
-because it is currently audio only. If video was added meaning a much higher
-number of packets would be sent, this number would be increased. If the packet
-number is in this list then it was received.
-
-This is how groupchats in Tox work.
+# TCP client
+
+`TCP client` is the client for the TCP server. It establishes and keeps a
+connection to the TCP server open.
+
+All the packet formats are explained in detail in `TCP server` so this section
+will only cover `TCP client` specific details which are not covered in the
+`TCP server` documentation.
+
+TCP clients can choose to connect to TCP servers through a proxy. Most common
+types of proxies (SOCKS, HTTP) work by establishing a connection through a
+proxy using the protocol of that specific type of proxy. After the connection
+through that proxy to a TCP server is established, the socket behaves from the
+point of view of the application exactly like a TCP socket that connects
+directly to a TCP server instance. This means supporting proxies is easy.
+
+`TCP client` first establishes a TCP connection, either through a proxy or
+directly to a TCP server. It uses the DHT public key as its long term key when
+connecting to the TCP server.
+
+It establishes a secure connection to the TCP server. After establishing a
+connection to the TCP server, and when the handshake response has been received
+from the TCP server, the toxcore implementation immediately sends a ping
+packet. Ideally the first packets sent would be routing request packets but
+this solution aids code simplicity and allows the server to confirm the
+connection.
+
+Ping packets, like all other data packets, are sent as encrypted packets.
+
+Ping packets are sent by the toxcore TCP client every 30 seconds with a timeout
+of 10 seconds, the same interval and timeout as toxcore TCP server ping
+packets. They are the same because they accomplish the same thing.
+
+`TCP client` must have a mechanism to make sure important packets (routing
+requests, disconnection notifications, ping packets, ping response packets)
+don't get dropped because the TCP socket is full. Should this happen, the TCP
+client must save these packets and prioritize sending them, in order, when the
+TCP socket on the server becomes available for writing again. `TCP client` must
+also take into account that packets might be bigger than the number of bytes it
+can currently write to the socket. In this case, it must save the bytes of the
+packet that it didn't write to the socket and write them to the socket as soon
+as the socket allows so that the connection does not get broken. It must also
+assume that it may receive only part of an encrypted packet. If this occurs it
+must save the part of the packet it has received and wait for the rest of the
+packet to arrive before handling it.
+
+`TCP client` can be used to open up a route to friends who are connected to the
+TCP server. This is done by sending a routing request to the TCP server with
+the DHT public key of the friend. This tells the server to register a
+`connection_id` to the DHT public key sent in the packet. The server will then
+respond with a routing response packet. If the connection was accepted, the
+`TCP client` will store the `connection id` for this connection. The
+`TCP client` will make sure that routing response packets are responses to a
+routing packet that it sent by storing that it sent a routing packet to that
+public key and checking the response against it. This prevents the possibility
+of a bad TCP server exploiting the client.
+
+The `TCP client` will handle connection notifications and disconnection
+notifications by alerting the module using it that the connection to the peer
+is up or down.
+
+`TCP client` will send a disconnection notification to kill a connection to a
+friend. It must send a disconnection notification packet regardless of whether
+the peer was online or offline so that the TCP server will unregister the
+connection.
+
+Data to friends can be sent through the TCP relay using OOB (out of band)
+packets and connected connections. To send an OOB packet, the DHT public key of
+the friend must be known. OOB packets are sent in blind and there is no way to
+query the TCP relay to see if the friend is connected before sending one. OOB
+packets should be sent when the connection to the friend via the TCP relay
+isn't in an connected state but it is known that the friend is connected to
+that relay. If the friend is connected via the TCP relay, then normal data
+packets must be sent as they are smaller than OOB packets.
+
+OOB recv and data packets must be handled and passed to the module using it.
+
+# TCP connections
+
+`TCP_connections` takes care of handling multiple TCP client instances to
+establish a reliable connection via TCP relays to a friend. Connecting to a
+friend with only one relay would not be very reliable, so `TCP_connections`
+provides the level of abstraction needed to manage multiple relays. For
+example, it ensures that if a relay goes down, the connection to the peer will
+not be impacted. This is done by connecting to the other peer with more than
+one relay.
+
+`TCP_connections` is above [`TCP client`](#tcp-client) and below `net_crypto`.
+
+A TCP connection in `TCP_connections` is defined as a connection to a peer
+though one or more TCP relays. To connect to another peer with
+`TCP_connections`, a connection in `TCP_connections` to the peer with DHT
+public key X will be created. Some TCP relays which we know the peer is
+connected to will then be associated with that peer. If the peer isn't
+connected directly yet, these relays will be the ones that the peer has sent to
+us via the onion module. The peer will also send some relays it is directly
+connected to once a connection is established, however, this is done by another
+module.
+
+`TCP_connections` has a list of all relays it is connected to. It tries to keep
+the number of relays it is connected to as small as possible in order to
+minimize load on relays and lower bandwidth usage for the client. The desired
+number of TCP relay connections per peer is set to 3 in toxcore with the
+maximum number set to 6. The reason for these numbers is that 1 would mean no
+backup relays and 2 would mean only 1 backup. To be sure that the connection is
+reliable 3 seems to be a reasonable lower bound. The maximum number of 6 is the
+maximum number of relays that can be tied to each peer. If 2 peers are
+connected each to the same 6+ relays and they both need to be connected to that
+amount of relays because of other friends this is where this maximum comes into
+play. There is no reason why this number is 6 but in toxcore it has to be at
+least double than the desired number (3) because the code assumes this.
+
+If necessary, `TCP_connections` will connect to TCP relays to use them to send
+onion packets. This is only done if there is no UDP connection to the network.
+When there is a UDP connection, packets are sent with UDP only because sending
+them with TCP relays can be less reliable. It is also important that we are
+connected at all times to some relays as these relays will be used by TCP only
+peers to initiate a connection to us.
+
+In toxcore, each client is connected to 3 relays even if there are no TCP peers
+and the onion is not needed. It might be optimal to only connect to these
+relays when toxcore is initializing as this is the only time when peers will
+connect to us via TCP relays we are connected to. Due to how the onion works,
+after the initialization phase, where each peer is searched in the onion and
+then if they are found the info required to connect back (DHT pk, TCP relays)
+is sent to them, there should be no more peers connecting to us via TCP relays.
+This may be a way to further reduce load on TCP relays, however, more research
+is needed before it is implemented.
+
+`TCP_connections` picks one relay and uses only it for sending data to the
+other peer. The reason for not picking a random connected relay for each packet
+is that it severely deteriorates the quality of the link between two peers and
+makes performance of lossy video and audio transmissions really poor. For this
+reason, one relay is picked and used to send all data. If for any reason no
+more data can be sent through that relay, the next relay is used. This may
+happen if the TCP socket is full and so the relay should not necessarily be
+dropped if this occurs. Relays are only dropped if they time out or if they
+become useless (if the relay is one too many or is no longer being used to
+relay data to any peers).
+
+`TCP_connections` in toxcore also contains a mechanism to make connections go
+to sleep. TCP connections to other peers may be put to sleep if the connection
+to the peer establishes itself with UDP after the connection is established
+with TCP. UDP is the method preferred by `net_crypto` to communicate with other
+peers. In order to keep track of the relays which were used to connect with the
+other peer in case the UDP connection fails, they are saved by
+`TCP_connections` when the connection is put to sleep. Any relays which were
+only used by this redundant connection are saved then disconnected from. If the
+connection is awakened, the relays are reconnected to and the connection is
+reestablished. Putting a connection to sleep is the same as saving all the
+relays used by the connection and removing the connection. Awakening the
+connection is the same as creating a new connection with the same parameters
+and restoring all the relays.
+
+A method to detect potentially dysfunctional relays that try to disrupt the
+network by lying that they are connecting to a peer when they are not or that
+maliciously drop all packets should be considered. Toxcore doesn't currently
+implement such a system and adding one requires more research and likely also
+requires extending the protocol.
+
+When TCP connections connects to a relay it will create a new
+[`TCP_client`](#tcp-client) instance for that relay. At any time if the
+`TCP_client` instance reports that it has disconnected, the TCP relay will be
+dropped. Once the TCP relay reports that it is connected, `TCP_connections`
+will find all the connections that are associated to the relay and announce to
+the relay that it wants to connect to each of them with routing requests. If
+the relay reports that the peer for a connection is online, the connection
+number and relay will be used to send data in that connection with data
+packets. If the peer isn't reported as online but the relay is associated to a
+connection, TCP OOB (out of band) packets will be used to send data instead of
+data packets. TCP OOB packets are used in this case since the relay most likely
+has the peer connected but it has not sent a routing request to connect to us.
+
+`TCP_connections` is used as the bridge between individual `TCP_client`
+instances and `net_crypto`, or the bridge between individual connections and
+something that requires an interface that looks like one connection.
 
 # Net crypto
 
@@ -2395,7 +1462,7 @@ UDP is the same is for simplicity and so the connection can switch between both
 without the peers needing to disconnect and reconnect. For example two Tox
 friends might first connect over TCP and a few seconds later switch to UDP when
 a direct UDP connection becomes possible. The opening up of the UDP route or
-'hole punching' is done by the DHT module and the opening up of a relayed TCP
+'hole-punching' is done by the DHT module and the opening up of a relayed TCP
 connection is done by the `TCP_connection` module. The Tox transport protocol
 has the job of connecting two peers (tox friends) safely once a route or
 communications link between both is found. Direct UDP is preferred over TCP
@@ -2598,8 +1665,8 @@ no longer valid and a new connection will be created immediately with the
 
 Sometimes toxcore might receive the DHT public key of the peer first with a
 handshake packet so it is important that this case is handled and that the
-implementation passes the DHT public key to the other modules (DHT,
-`TCP_connection`) because this does happen.
+implementation passes the DHT public key to the other modules ([DHT](#dht),
+[`TCP_connection`](#tcp-connections) because this does happen.
 
 Handshake packets must be created only once during the connection but must be
 sent in intervals until we are sure the other received them. This happens when
@@ -2682,7 +1749,7 @@ Encrypted packets:
 The payload is encrypted with the session key and 'base nonce' set by the
 receiver in their handshake + packet number (starting at 0, big endian math).
 
-The packet id for encrypted packets is 27. Encrypted packets are the packets
+The packet id for encrypted packets is `27`. Encrypted packets are the packets
 used to send data to the other peer in the connection. Since these packets can
 be sent over UDP the implementation must assume that they can arrive out of
 order or even not arrive at all.
@@ -2944,44 +2011,6 @@ completely by placing them into the send packet queue and sending them even if
 the congestion control says not to. This is used in toxcore for all non file
 transfer packets to prevent file transfers from preventing normal message
 packets from being sent.
-
-# network.txt
-
-The network module is the lowest file in toxcore that everything else depends
-on. This module is basically a UDP socket wrapper, serves as the sorting ground
-for packets received by the socket, initializes and uninitializes the socket.
-It also contains many socket, networking related and some other functions like
-a monotonic time function used by other toxcore modules.
-
-Things of note in this module are the maximum UDP packet size define
-(`MAX_UDP_PACKET_SIZE`) which sets the maximum UDP packet size toxcore can send
-and receive. The list of all UDP packet ids: `NET_PACKET_*`. UDP packet ids are
-the value of the first byte of each UDP packet and is how each packet gets
-sorted to the right module that can handle it. `networking_registerhandler()`
-is used by higher level modules in order to tell the network object which
-packets to send to which module via a callback.
-
-It also contains datastructures used for ip addresses in toxcore. IP4 and IP6
-are the datastructures for ipv4 and ipv6 addresses, IP is the datastructure for
-storing either (the family can be set to `AF_INET` (ipv4) or `AF_INET6` (ipv6).
-It can be set to another value like `TCP_ONION_FAMILY`, `TCP_INET`, `TCP_INET6`
-or `TCP_FAMILY` which are invalid values in the network modules but valid
-values in some other module and denote a special type of ip) and `IP_Port`
-stores an IP datastructure with a port.
-
-Since the network module interacts directly with the underlying operating
-system with its socket functions it has code to make it work on windows, linux,
-etc... unlike most modules that sit at a higher level.
-
-The network module currently uses the polling method to read from the UDP
-socket. The `networking_poll()` function is called to read all the packets from
-the socket and pass them to the callbacks set using the
-`networking_registerhandler()` function. The reason it uses polling is simply
-because it was easier to write it that way, another method would be better
-here.
-
-The goal of this module is to provide an easy interface to a UDP socket and
-other networking related functions.
 
 # Onion
 
@@ -3756,6 +2785,1036 @@ the friend as if toxcore was just started.
 If toxcore goes offline (no onion traffic for 20 seconds) toxcore will
 aggressively reannounce itself and search for friends as if it was just
 started.
+
+# Friend requests
+
+When a Tox user adds someone with Tox, toxcore will try sending a friend
+request to that person. A friend request contains the long term public key of
+the sender, a nospam number and a message.
+
+Transmitting the long term public key is the primary goal of the friend request
+as it is what the peer needs to find and establish a connection to the sender.
+The long term public key is what the receiver adds to his friends list if he
+accepts the friend request.
+
+The nospam is a number used to prevent someone from spamming the network with
+valid friend requests. It makes sure that the only people who have seen the Tox
+ID of a peer are capable of sending them a friend request. The nospam is one of
+the components of the Tox ID.
+
+The nospam is a number or a list of numbers set by the peer, only received
+friend requests that contain a nospam that was set by the peer are sent to the
+client to be accepted or refused by the user. The nospam prevents random peers
+in the network from sending friend requests to non friends. The nospam is not
+long enough to be secure meaning an extremely resilient attacker could manage
+to send a spam friend request to someone. 4 bytes is large enough to prevent
+spam from random peers in the network. The nospam could also allow Tox users to
+issue different Tox IDs and even change Tox IDs if someone finds a Tox ID and
+decides to send it hundreds of spam friend requests. Changing the nospam would
+stop the incoming wave of spam friend requests without any negative effects to
+the users friends list. For example if users would have to change their public
+key to prevent them from receiving friend requests it would mean they would
+have to essentially abandon all their current friends as friends are tied to
+the public key. The nospam is not used at all once the friends have each other
+added which means changing it won't have any negative effects.
+
+Friend request:
+
+    [uint32_t nospam][Message (UTF8) 1 to ONION_CLIENT_MAX_DATA_SIZE bytes]
+
+Friend request packet when sent as an onion data packet:
+
+    [uint8_t (32)][Friend request]
+
+Friend request packet when sent as a `net_crypto` data packet (If we are
+directly connected to the peer because of a group chat but are not friends with
+them):
+
+    [uint8_t (18)][Friend request]
+
+When a friend is added to toxcore with their Tox ID and a message, the friend
+is added in `friend_connection` and then toxcore tries to send friend requests.
+
+When sending a friend request, toxcore will check if the peer which a friend
+request is being sent to is already connected to using a `net_crypto`
+connection which can happen if both are in the same group chat. If this is the
+case the friend request will be sent as a `net_crypto` packet using that
+connection. If not, it will be sent as an onion data packet.
+
+Onion data packets contain the real public key of the sender and if a
+`net_crypto` connection is established it means the peer knows our real public
+key. This is why the friend request does not need to contain the real public
+key of the peer.
+
+Friend requests are sent with exponentially increasing interval of 2 seconds, 4
+seconds, 8 seconds, etc... in toxcore. This is so friend requests get resent
+but eventually get resent in intervals that are so big that they essentially
+expire. The sender has no way of knowing if a peer refuses a friend requests
+which is why friend requests need to expire in some way. Note that the interval
+is the minimum timeout, if toxcore cannot send that friend request it will try
+again until it manages to send it. One reason for not being able to send the
+friend request would be that the onion has not found the friend in the onion
+and so cannot send an onion data packet to them.
+
+Received friend requests are passed to the client, the client is expected to
+show the message from the friend request to the user and ask the user if they
+want to accept the friend request or not. Friend requests are accepted by
+adding the peer sending the friend request as a friend and refused by simply
+ignoring it.
+
+Friend requests are sent multiple times meaning that in order to prevent the
+same friend request from being sent to the client multiple times toxcore keeps
+a list of the last real public keys it received friend requests from and
+discards any received friend requests that are from a real public key that is
+in that list. In toxcore this list is a simple circular list. There are many
+ways this could be improved and made more efficient as a circular list isn't
+very efficient however it has worked well in toxcore so far.
+
+Friend requests from public keys that are already added to the friends list
+should also be discarded.
+
+# Friend connection
+
+`friend_connection` is the module that sits on top of the [DHT](#dht),
+[Onion](#onion) and [`net_crypto`](#net-crypto) modules and takes care of
+linking the 3 together.
+
+Friends in `friend_connection` are represented by their real public key. When a
+friend is added in `friend_connection`, an onion search entry is created for
+that friend. This means that the onion module will start looking for this
+friend and send that friend their DHT public key, and the TCP relays it is
+connected to, in case a connection is only possible with TCP.
+
+Once the onion returns the DHT public key of the peer, the DHT public key is
+saved, added to the DHT friends list and a new `net_crypto` connection is
+created. Any TCP relays returned by the onion for this friend are passed to the
+`net_crypto` connection.
+
+If the DHT establishes a direct UDP connection with the friend,
+`friend_connection` will pass the IP/port of the friend to `net_crypto` and
+also save it to be used to reconnect to the friend if they disconnect.
+
+If `net_crypto` finds that the friend has a different DHT public key, which can
+happen if the friend restarted their client, `net_crypto` will pass the new DHT
+public key to the onion module and will remove the DHT entry for the old DHT
+public key and replace it with the new one. The current `net_crypto` connection
+will also be killed and a new one with the correct DHT public key will be
+created.
+
+When the `net_crypto` connection for a friend goes online, `friend_connection`
+will tell the onion module that the friend is online so that it can stop
+spending resources looking for the friend. When the friend connection goes
+offline, `friend_connection` will tell the onion module so that it can start
+looking for the friend again.
+
+There are 2 types of data packets sent to friends with the `net_crypto`
+connection handled at the level of `friend_connection`, Alive packets and TCP
+relay packets. Alive packets are packets with the packet id or first byte of
+data (only byte in this packet) being 16. They are used in order to check if
+the other friend is still online. `net_crypto` does not have any timeout when
+the connection is established so timeouts are caught using this packet. In
+toxcore, this packet is sent every 8 seconds. If none of these packets are
+received for 32 seconds, the connection is timed out and killed. These numbers
+seem to cause the least issues and 32 seconds is not too long so that, if a
+friend times out, toxcore won't falsely see them online for too long. Usually
+when a friend goes offline they have time to send a disconnect packet in the
+`net_crypto` connection which makes them appear offline almost instantly.
+
+The timeout for when to stop retrying to connect to a friend by creating new
+`net_crypto` connections when the old one times out in toxcore is the same as
+the timeout for DHT peers (122 seconds). However, it is calculated from the
+last time a DHT public key was received for the friend or time the friend's
+`net_crypto` connection went offline after being online. The highest time is
+used to calculate when the timeout is. `net_crypto` connections will be
+recreated (if the connection fails) until this timeout.
+
+`friend_connection` sends a list of 3 relays (the same number as the target
+number of TCP relay connections in `TCP_connections`) to each connected friend
+every 5 minutes in toxcore. Immediately before sending the relays, they are
+associated to the current `net_crypto->TCP_connections` connection. This
+facilitates connecting the two friends together using the relays as the friend
+who receives the packet will associate the sent relays to the `net_crypto`
+connection they received it from. When both sides do this they will be able to
+connect to each other using the relays. The packet id or first byte of the
+packet of share relay packets is 0x11. This is then followed by some TCP relays
+stored in packed node format.
+
+| Length   | Contents                                   |
+|:---------|:-------------------------------------------|
+| `1`      | `uint8_t` (0x11)                           |
+| variable | TCP relays in packed node format (see DHT) |
+
+If local IPs are received as part of the packet, the local IP will be replaced
+with the IP of the peer that sent the relay. This is because we assume this is
+the best way to attempt to connect to the TCP relay. If the peer that sent the
+relay is using a local IP, then the sent local IP should be used to connect to
+the relay.
+
+For all other data packets, are passed by `friend_connection` up to the upper
+Messenger module. It also separates lossy and lossless packets from
+`net_crypto`.
+
+Friend connection takes care of establishing the connection to the friend and
+gives the upper messenger layer a simple interface to receive and send
+messages, add and remove friends and know if a friend is connected (online) or
+not connected (offline).
+
+# Messenger
+
+Messenger is the module at the top of all the other modules. It sits on top of
+[`friend_connection`](#friend-connection) in the hierarchy of toxcore.
+
+Messenger takes care of sending and receiving messages using the connection
+provided by `friend_connection`. The module provides a way for friends to
+connect and makes it usable as an instant messenger. For example, Messenger
+lets users set a nickname and status message which it then transmits to friends
+when they are online. It also allows users to send messages to friends and
+builds an instant messenging system on top of the lower level
+`friend_connection` module.
+
+Messenger offers two methods to add a friend. The first way is to add a friend
+with only their long term public key, this is used when a friend needs to be
+added but for some reason a friend request should not be sent. The friend
+should only be added. This method is most commonly used to accept friend
+requests but could also be used in other ways. If two friends add each other
+using this function they will connect to each other. Adding a friend using this
+method just adds the friend to `friend_connection` and creates a new friend
+entry in Messenger for the friend.
+
+The Tox ID is used to identify peers so that they can be added as friends in
+Tox. In order to add a friend, a Tox user must have the friend's Tox ID.The Tox
+ID contains the long term public key of the peer (32 bytes) followed by the 4
+byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The
+method of sending the Tox ID to others is up to the user and the client but the
+recommended way is to encode it in hexadecimal format and have the user
+manually send it to the friend using another program.
+
+Tox ID:
+
+![Tox ID](img/tox-id.png)
+
+| Length | Contents             |
+|:-------|:---------------------|
+| `32`   | long term public key |
+| `4`    | nospam               |
+| `2`    | checksum             |
+
+The checksum is calculated by XORing the first two bytes of the ID with the
+next two bytes, then the next two bytes until all the 36 bytes have been XORed
+together. The result is then appended to the end to form the Tox ID.
+
+The user must make sure the Tox ID is not intercepted and replaced in transit
+by a different Tox ID, which would mean the friend would connect to a malicious
+person instead of the user, though taking reasonable precautions as this is
+outside the scope of Tox. Tox assumes that the user has ensured that they are
+using the correct Tox ID, belonging to the intended person, to add a friend.
+
+The second method to add a friend is by using their Tox ID and a message to be
+sent in a friend request. This way of adding friends will try to send a friend
+request, with the set message, to the peer whose Tox ID was added. The method
+is similar to the first one, except that a friend request is crafted and sent
+to the other peer.
+
+When a friend connection associated to a Messenger friend goes online, a ONLINE
+packet will be sent to them. Friends are only set as online if an ONLINE packet
+is received.
+
+As soon as a friend goes online, Messenger will stop sending friend requests to
+that friend, if it was sending them, as they are redundant for this friend.
+
+Friends will be set as offline if either the friend connection associated to
+them goes offline or if an OFFLINE packet is received from the friend.
+
+Messenger packets are sent to the friend using the online friend connection to
+the friend.
+
+Should Messenger need to check whether any of the non lossy packets in the
+following list were received by the friend, for example to implement receipts
+for text messages, `net_crypto` can be used. The `net_crypto` packet number,
+used to send the packets, should be noted and then `net_crypto` checked later
+to see if the bottom of the send array is after this packet number. If it is,
+then the friend has received them. Note that `net_crypto` packet numbers could
+overflow after a long time, so checks should happen within 2\*\*32 `net_crypto`
+packets sent with the same friend connection.
+
+Message receipts for action messages and normal text messages are implemented
+by adding the `net_crypto` packet number of each message, along with the
+receipt number, to the top of a linked list that each friend has as they are
+sent. Every Messenger loop, the entries are read from the bottom and entries
+are removed and passed to the client until an entry that refers to a packet not
+yet received by the other is reached, when this happens it stops.
+
+List of Messenger packets:
+
+## `ONLINE`
+
+length: 1 byte
+
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x18) |
+
+Sent to a friend when a connection is established to tell them to mark us as
+online in their friends list. This packet and the OFFLINE packet are necessary
+as `friend_connections` can be established with non-friends who are part of a
+groupchat. The two packets are used to differentiate between these peers,
+connected to the user through groupchats, and actual friends who ought to be
+marked as online in the friendlist.
+
+On receiving this packet, Messenger will show the peer as being online.
+
+## `OFFLINE`
+
+length: 1 byte
+
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x19) |
+
+Sent to a friend when deleting the friend. Prevents a deleted friend from
+seeing us as online if we are connected to them because of a group chat.
+
+On receiving this packet, Messenger will show this peer as offline.
+
+## `NICKNAME`
+
+length: 1 byte to 129 bytes.
+
+| Length     | Contents                       |
+|:-----------|:-------------------------------|
+| `1`        | `uint8_t` (0x30)               |
+| `[0, 128]` | Nickname as a UTF8 byte string |
+
+Used to send the nickname of the peer to others. This packet should be sent
+every time to each friend every time they come online and each time the
+nickname is changed.
+
+## `STATUSMESSAGE`
+
+length: 1 byte to 1008 bytes.
+
+| Length      | Contents                             |
+|:------------|:-------------------------------------|
+| `1`         |  `uint8_t` (0x31)                    |
+| `[0, 1007]` | Status message as a UTF8 byte string |
+
+Used to send the status message of the peer to others. This packet should be
+sent every time to each friend every time they come online and each time the
+status message is changed.
+
+## `USERSTATUS`
+
+length: 2 bytes
+
+| Length | Contents                                          |
+|:-------|:--------------------------------------------------|
+| `1`    | `uint8_t` (0x32)                                  |
+| `1`    | `uint8_t` status (0 = online, 1 = away, 2 = busy) |
+
+Used to send the user status of the peer to others. This packet should be sent
+every time to each friend every time they come online and each time the user
+status is changed.
+
+## `TYPING`
+
+length: 2 bytes
+
+| Length | Contents                                             |
+|:-------|:-----------------------------------------------------|
+| `1`    | `uint8_t` (0x33)                                     |
+| `1`    | `uint8_t` typing status (0 = not typing, 1 = typing) |
+
+Used to tell a friend whether the user is currently typing or not.
+
+## `MESSAGE`
+
+| Length      | Contents                      |
+|:------------|:------------------------------|
+| `1`         | `uint8_t` (0x40)              |
+| `[0, 1372]` | Message as a UTF8 byte string |
+
+Used to send a normal text message to the friend.
+
+## `ACTION`
+
+| Length      | Contents                             |
+|:------------|:-------------------------------------|
+| `1`         | `uint8_t` (0x41)                     |
+| `[0, 1372]` | Action message as a UTF8 byte string |
+
+Used to send an action message (like an IRC action) to the friend.
+
+## `MSI`
+
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` (0x45) |
+| `?`    | data             |
+
+Reserved for Tox AV usage.
+
+## File Transfer Related Packets
+
+### `FILE_SENDREQUEST`
+
+| Length     | Contents                       |
+|:-----------|:-------------------------------|
+| `1`        | `uint8_t` (0x50)               |
+| `1`        | `uint8_t` file number          |
+| `4`        | `uint32_t` file type           |
+| `8`        | `uint64_t` file size           |
+| `32`       | file id (32 bytes)             |
+| `[0, 255]` | filename as a UTF8 byte string |
+
+Note that file type and file size are sent in big endian/network byte format.
+
+### `FILE_CONTROL`
+
+length: 4 bytes if `control_type` isn't seek. 8 bytes if `control_type` is
+seek.
+
+| Length | Contents                  |
+|:-------|:--------------------------|
+| `1`    | `uint8_t` (0x51)          |
+| `1`    | `uint8_t` `send_receive`  |
+| `1`    | `uint8_t` file number     |
+| `1`    | `uint8_t` `control_type`  |
+| `8`    | `uint64_t` seek parameter |
+
+`send_receive` is 0 if the control targets a file being sent (by the peer
+sending the file control), and 1 if it targets a file being received.
+
+`control_type` can be one of: 0 = accept, 1 = pause, 2 = kill, 3 = seek.
+
+The seek parameter is only included when `control_type` is seek (3).
+
+Note that if it is included the seek parameter will be sent in big
+endian/network byte format.
+
+### `FILE_DATA`
+
+length: 2 to 1373 bytes.
+
+| Length      | Contents              |
+|:------------|:----------------------|
+| `1`         | `uint8_t` (0x52)      |
+| `1`         | `uint8_t` file number |
+| `[0, 1371]` | file data piece       |
+
+Files are transferred in Tox using File transfers.
+
+To initiate a file transfer, the friend creates and sends a `FILE_SENDREQUEST`
+packet to the friend it wants to initiate a file transfer to.
+
+The first part of the `FILE_SENDREQUEST` packet is the file number. The file
+number is the number used to identify this file transfer. As the file number is
+represented by a 1 byte number, the maximum amount of concurrent files Tox can
+send to a friend is 256. 256 file transfers per friend is enough that clients
+can use tricks like queueing files if there are more files needing to be sent.
+
+256 outgoing files per friend means that there is a maximum of 512 concurrent
+file transfers, between two users, if both incoming and outgoing file transfers
+are counted together.
+
+As file numbers are used to identify the file transfer, the Tox instance must
+make sure to use a file number that isn't used for another outgoing file
+transfer to that same friend when creating a new outgoing file transfer. File
+numbers are chosen by the file sender and stay unchanged for the entire
+duration of the file transfer. The file number is used by both `FILE_CONTROL`
+and `FILE_DATA` packets to identify which file transfer these packets are for.
+
+The second part of the file transfer request is the file type. This is simply a
+number that identifies the type of file. for example, tox.h defines the file
+type 0 as being a normal file and type 1 as being an avatar meaning the Tox
+client should use that file as an avatar. The file type does not effect in any
+way how the file is transfered or the behavior of the file transfer. It is set
+by the Tox client that creates the file transfers and send to the friend
+untouched.
+
+The file size indicates the total size of the file that will be transfered. A
+file size of `UINT64_MAX` (maximum value in a `uint64_t`) means that the size
+of the file is undetermined or unknown. For example if someone wanted to use
+Tox file transfers to stream data they would set the file size to `UINT64_MAX`.
+A file size of 0 is valid and behaves exactly like a normal file transfer.
+
+The file id is 32 bytes that can be used to uniquely identify the file
+transfer. For example, avatar transfers use it as the hash of the avatar so
+that the receiver can check if they already have the avatar for a friend which
+saves bandwidth. It is also used to identify broken file transfers across
+toxcore restarts (for more info see the file transfer section of tox.h). The
+file transfer implementation does not care about what the file id is, as it is
+only used by things above it.
+
+The last part of the file transfer is the optional file name which is used to
+tell the receiver the name of the file.
+
+When a `FILE_SENDREQUEST` packet is received, the implementation validates and
+sends the info to the Tox client which decides whether they should accept the
+file transfer or not.
+
+To refuse or cancel a file transfer, they will send a `FILE_CONTROL` packet
+with `control_type` 2 (kill).
+
+`FILE_CONTROL` packets are used to control the file transfer. `FILE_CONTROL`
+packets are used to accept/unpause, pause, kill/cancel and seek file transfers.
+The `control_type` parameter denotes what the file control packet does.
+
+The `send_receive` and file number are used to identify a specific file
+transfer. Since file numbers for outgoing and incoming files are not related to
+each other, the `send_receive` parameter is used to identify if the file number
+belongs to files being sent or files being received. If `send_receive` is 0,
+the file number corresponds to a file being sent by the user sending the file
+control packet. If `send_receive` is 1, it corresponds to a file being received
+by the user sending the file control packet.
+
+`control_type` indicates the purpose of the `FILE_CONTROL` packet.
+`control_type` of 0 means that the `FILE_CONTROL` packet is used to tell the
+friend that the file transfer is accepted or that we are unpausing a previously
+paused (by us) file transfer. `control_type` of 1 is used to tell the other to
+pause the file transfer.
+
+If one party pauses a file transfer, that party must be the one to unpause it.
+Should both sides pause a file transfer, both sides must unpause it before the
+file can be resumed. For example, if the sender pauses the file transfer, the
+receiver must not be able to unpause it. To unpause a file transfer,
+`control_type` 0 is used. Files can only be paused when they are in progress
+and have been accepted.
+
+`control_type` 2 is used to kill, cancel or refuse a file transfer. When a
+`FILE_CONTROL` is received, the targeted file transfer is considered dead, will
+immediately be wiped and its file number can be reused. The peer sending the
+`FILE_CONTROL` must also wipe the targeted file transfer from their side. This
+control type can be used by both sides of the transfer at any time.
+
+`control_type` 3, the seek control type is used to tell the sender of the file
+to start sending from a different index in the file than 0. It can only be used
+right after receiving a `FILE_SENDREQUEST` packet and before accepting the file
+by sending a `FILE_CONTROL` with `control_type` 0. When this `control_type` is
+used, an extra 8 byte number in big endian format is appended to the
+`FILE_CONTROL` that is not present with other control types. This number
+indicates the index in bytes from the beginning of the file at which the file
+sender should start sending the file. The goal of this control type is to
+ensure that files can be resumed across core restarts. Tox clients can know if
+they have received a part of a file by using the file id and then using this
+packet to tell the other side to start sending from the last received byte. If
+the seek position is bigger or equal to the size of the file, the seek packet
+is invalid and the one receiving it will discard it.
+
+To accept a file Tox will therefore send a seek packet, if it is needed, and
+then send a `FILE_CONTROL` packet with `control_type` 0 (accept) to tell the
+file sender that the file was accepted.
+
+Once the file transfer is accepted, the file sender will start sending file
+data in sequential chunks from the beginning of the file (or the position from
+the `FILE_CONTROL` seek packet if one was received).
+
+File data is sent using `FILE_DATA` packets. The file number corresponds to the
+file transfer that the file chunks belong to. The receiver assumes that the
+file transfer is over as soon as a chunk with the file data size not equal to
+the maximum size (1371 bytes) is received. This is how the sender tells the
+receiver that the file transfer is complete in file transfers where the size of
+the file is unknown (set to `UINT64_MAX`). The receiver also assumes that if
+the amount of received data equals to the file size received in the
+`FILE_SENDREQUEST`, the file sending is finished and has been successfully
+received. Immediately after this occurs, the receiver frees up the file number
+so that a new incoming file transfer can use that file number. The
+implementation should discard any extra data received which is larger than the
+file size received at the beginning.
+
+In 0 filesize file transfers, the sender will send one `FILE_DATA` packet with
+a file data size of 0.
+
+The sender will know if the receiver has received the file successfully by
+checking if the friend has received the last `FILE_DATA` packet sent
+(containing the last chunk of the file). `Net_crypto` can be used to check
+whether packets sent through it have been received by storing the packet number
+of the sent packet and verifying later in `net_crypto` to see whether it was
+received or not. As soon as `net_crypto` says the other received the packet,
+the file transfer is considered successful, wiped and the file number can be
+reused to send new files.
+
+`FILE_DATA` packets should be sent as fast as the `net_crypto` connection can
+handle it respecting its congestion control.
+
+If the friend goes offline, all file transfers are cleared in toxcore. This
+makes it simpler for toxcore as it does not have to deal with resuming file
+transfers. It also makes it simpler for clients as the method for resuming file
+transfers remains the same, even if the client is restarted or toxcore loses
+the connection to the friend because of a bad internet connection.
+
+## Group Chat Related Packets
+
+| Packet ID | Packet Name         |
+|:----------|:--------------------|
+| 0x60      | `INVITE_GROUPCHAT`  |
+| 0x61      | `ONLINE_PACKET`     |
+| 0x62      | `DIRECT_GROUPCHAT`  |
+| 0x63      | `MESSAGE_GROUPCHAT` |
+| 0xC7      | `LOSSY_GROUPCHAT`   |
+
+Messenger also takes care of saving the friends list and other friend
+information so that it's possible to close and start toxcore while keeping all
+your friends, your long term key and the information necessary to reconnect to
+the network.
+
+Important information messenger stores includes: the long term private key, our
+current nospam value, our friends' public keys and any friend requests the user
+is currently sending. The network DHT nodes, TCP relays and some onion nodes
+are stored to aid reconnection.
+
+In addition to this, a lot of optional data can be stored such as the usernames
+of friends, our current username, status messages of friends, our status
+message, etc... can be stored. The exact format of the toxcore save is
+explained later.
+
+The TCP server is run from the toxcore messenger module if the client has
+enabled it. TCP server is usually run independently as part of the bootstrap
+node package but it can be enabled in clients. If it is enabled in toxcore,
+Messenger will add the running TCP server to the TCP relay.
+
+Messenger is the module that transforms code that can connect to friends based
+on public key into a real instant messenger.
+
+# Group
+
+Group chats in Tox work by temporarily adding some peers (up to 4) present in
+the group chat as temporary `friend_connection` friends, that are deleted when
+the group chat is exited.
+
+Each peer in the group chat is identified by their real long term public key
+however peers transmit their DHT public keys to each other via the group chat
+in order to speed up the connection by making it unnecessary for the peers to
+find each others DHT public keys with the onion which would happen if they
+would have added themselves as normal friends.
+
+The upside of using `friend_connection` is that group chats do not have to deal
+with things like hole-punching, peers only on TCP or other low level networking
+things. The downside however is that every single peer knows each others real
+long term public key and DHT public key which means these group chats should
+only be used between friends.
+
+To connect to each other, two peers must have the other added to their list of
+friend connections. This is not a problem if the group chat has an equal or
+smaller number of participants than 5 as each of the 5 peers will have the 4
+others added to their list of friend connections. When there are more peers
+there must be a way to ensure that peers will manage to connect to other
+groupchat peers.
+
+Since the maximum number of peers per groupchat that will be connected to with
+friend connections is 4, if all peers in the groupchat are arranged in a
+perfect circle and each peer connects to the 2 peers that are the closest to
+the right of them and the 2 peers that are closest to the left of them, the
+peers should form a well connected circle of peers.
+
+Group chats in toxcore do this by subtracting the real long term public key of
+the peer with all the others in the group (our PK - other peer PK) and finding
+the two peers for which the result of this operation is the smallest. The
+operation is then inversed (other peer PK - our PK) and this operation is done
+again with all the public keys of the peers in the group. The 2 peers for which
+the result is again the smallest are picked.
+
+This gives 4 peers that are then added as a friend connection and associated to
+the group. If every peer in the group does this, they will form a circle of
+perfectly connected peers.
+
+Once the peers are connected to each other in a circle they relay each others
+messages. Every time a peer leaves the group or a new peer joins each member of
+the chat will recalculate the peers they should connect to.
+
+To join a group chat the peer must first be invited to it by their friend. To
+make a groupchat the peer will first create a groupchat and then invite people
+to this group chat. Once their friends are in the group chat they can invite
+their other friends to the chat and so on.
+
+To create a group chat the peer will generate a random 32 byte id that will be
+used to uniquely identify this group chat. 32 bytes is enough so that when
+randomly generated with a secure random number generator every groupchat ever
+created will have a different id. The goal of this 32 byte id is so that peers
+have a way of identifying each group chat so that they can prevent themselves
+from joining a groupchat twice for example.
+
+The groupchat will also have an unsigned 1 byte type. This type indicates what
+kind of groupchat the groupchat is, the current types are:
+
+0: text 1: audio
+
+Text groupchats are text only while audio indicates that the groupchat supports
+sending audio to it as well as text.
+
+The groupchat will also be identified by a unique unsigned 2 byte integer which
+in toxcore corresponds to the index of the groupchat in the array it is being
+stored in. Every groupchat in the current instance must have a different
+number. This number is used by groupchat peers that are directly connected to
+us to tell us which packets are for which groupchat. This is why every
+groupchat packet contains a groupchat number as part of them. Putting a 32 byte
+groupchat id in each packet would increase bandwidth waste by a lot which is
+the reason why groupchat numbers are used instead.
+
+Using the group number as the index of the array used to store the groupchat
+instances is recommended because this kind of access is usually most efficient
+and it ensures that each groupchat has a unique group number.
+
+When creating a new groupchat, the peer will add themselves as a groupchat peer
+with a peer number of 0 and their own long term public key and DHT public key.
+
+Invite packets:
+
+Invite packet:
+
+| Length | Contents                |
+|:-------|:------------------------|
+| `1`    | `uint8_t` (0x60)        |
+| `1`    | `uint8_t` (0x00)        |
+| `2`    | `uint16_t` group number |
+| `33`   | Group chat identifier   |
+
+A group chat identifier consists of a 1-byte type and a 32-byte ID
+concatenated.
+
+Response packet
+
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` (0x60)                |
+| `1`    | `uint8_t` (0x01)                |
+| `2`    | `uint16_t` group number (local) |
+| `2`    | `uint16_t` group number to join |
+| `33`   | Group chat identifier           |
+
+To invite a friend to a group chat, an invite packet is sent to the friend.
+These packets are sent using Messenger (if you look at the Messenger packet id
+section, all the groupchat packet ids are in there). Note that all numbers like
+all other numbers sent using Tox packets are sent in big endian format.
+
+The group chat number is as explained above, the number used to uniquely
+identify the groupchat instance from all the other groupchat instances the peer
+has. It is sent in the invite packet because it is needed by the friend in
+order to send back groupchat related packets.
+
+What follows is the 1 byte type with the 32 byte groupchat id appended to it.
+
+To refuse the invite, the friend receiving it will simply ignore and discard
+it.
+
+To accept the invite, the friend will create their own groupchat instance with
+the 32 byte groupchat id and 1 byte type sent in the request and send a invite
+response packet back. The friend will also add the one who sent the invite as a
+temporary invited groupchat connection.
+
+The first group number in the response packet is the group number of the
+groupchat the invited friend just created. The second group number is the group
+chat number that was sent in the invite request. What follows is the 1 byte
+type and 32 byte groupchat id that were sent in the invite request.
+
+When a peer receives an invite response packet they will check if the group id
+sent back corresponds to the group id of the groupchat with the group number
+also sent back. If everything is ok, a new peer number will be generated for
+the peer that sent the invite response packet. Then the peer with their
+generated peer number, their long term public key and DHT public key will be
+added to the peer list of the groupchat. A new peer packet will also be sent to
+tell everyone in the group chat about the new peer. The peer will also be added
+as a temporary invited groupchat connection.
+
+Peer numbers are used to uniquely identify each peer in the group chat. They
+are used in groupchat message packets so that peers receiving them can know who
+or which groupchat peer sent them. As groupchat packets are relayed, they must
+contain something that is used by others to identify the sender. Since putting
+a 32 byte public key in each packet would be wasteful a 2 byte peer number is
+instead used. Each peer in the groupchat has a unique peer number. Toxcore
+generates each peer number randomly but makes sure newly generated peer numbers
+are not equal to current ones already used by other peers in the group chat. If
+two peers join the groupchat from two different endpoints there is a small
+possibility that both will be given the same peer number however this
+possibility is low enough in practice that is is not an issue.
+
+Temporary invited groupchat connections are groupchat connections to the
+groupchat inviter used by groupchat peers to bootstrap themselves the the
+groupchat. They are the same thing as connections to groupchat peers via friend
+connections except that they are discarded after the peer is fully connected to
+the group chat.
+
+Peer online packet:
+
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` (0x61)                |
+| `2`    | `uint16_t` group number (local) |
+| `33`   | Group chat identifier           |
+
+Peer leave packet:
+
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` (0x62)                |
+| `2`    | `uint16_t` group number (local) |
+| `1`    | `uint8_t` (0x01)                |
+
+For a groupchat connection to work, both peers in the groupchat must be
+attempting to connect directly to each other.
+
+Groupchat connections are established when both peers who want to connect to
+each other either create a new friend connection to connect to each other or
+reuse an exiting friend connection that connects them together (if they are
+friends or already are connected together because of another group chat).
+
+As soon as the connection to the other peer is opened, a peer online packet is
+sent to the peer. The goal of the online packet is to tell the peer that we
+want to establish the groupchat connection with them and tell them the
+groupchat number of our groupchat instance. The peer online packet contains the
+group number and the group type and 32 byte groupchat id. The group number is
+the group number the peer has for the group with the group id sent in the
+packet.
+
+When both sides send a online packet to the other peer, a connection is
+established.
+
+When an online packet is received, the group number to communicate with the
+group is saved. If the connection to the peer is already established (an online
+packet has been already received) then the packet is dropped. If there is no
+group connection to that peer being established, the packet is dropped. If this
+is the first group connection to that group we establish, a peer query packet
+is sent. This is so we can get the list of peers from the group.
+
+The peer leave packet is sent to the peer right before killing a group
+connection. It is only used to tell the other side that the connection is dead
+if the friend connection is used for other uses than the group chat (another
+group chat, for a connection to a friend). If not, then the other peer will see
+the friend connection go offline which will prompt them to stop using it and
+kill the group connection tied to it.
+
+Peer query packet:
+
+| Length | Contents                |
+|:-------|:------------------------|
+| `1`    | `uint8_t` (0x62)        |
+| `2`    | `uint16_t` group number |
+| `1`    | `uint8_t` (0x08)        |
+
+Peer response packet:
+
+| Length   | Contents                                   |
+|:---------|:-------------------------------------------|
+| `1`      | `uint8_t` (0x62)                           |
+| `2`      | `uint16_t` group number                    |
+| `1`      | `uint8_t` (0x09)                           |
+| variable |  Repeated times number of peers: Peer info |
+
+The Peer info structure is as follows:
+
+| Length     | Contents               |
+|:-----------|:-----------------------|
+| `2`        | `uint16_t` peer number |
+| `32`       | Long term public key   |
+| `32`       | DHT public key         |
+| `1`        | `uint8_t` Name length  |
+| `[0, 255]` | Name                   |
+
+Title response packet:
+
+| Length   | Contents                |
+|:---------|:------------------------|
+| `1`      | `uint8_t` (0x62)        |
+| `2`      | `uint16_t` group number |
+| `1`      | `uint8_t` (0x0a)        |
+| variable | Title                   |
+
+Message packets:
+
+| Length   | Contents                                          |
+|:---------|:--------------------------------------------------|
+| `1`      | `uint8_t` (0x63)                                  |
+| `2`      | `uint16_t` group number                           |
+| `2`      | `uint16_t` peer number                            |
+| `4`      | `uint32_t` message number                         |
+| `1`      | `uint8_t` with a value representing id of message |
+| variable | Data                                              |
+
+Lossy Message packets:
+
+| Length   | Contents                                          |
+|:---------|:--------------------------------------------------|
+| `1`      | `uint8_t` (0xc7)                                  |
+| `2`      | `uint16_t` group number                           |
+| `2`      | `uint16_t` peer number                            |
+| `4`      | `uint16_t` message number                         |
+| `1`      | `uint8_t` with a value representing id of message |
+| variable | Data                                              |
+
+If a peer query packet is received, the receiver takes his list of peers and
+creates a peer response packet which is then sent to the other peer. If there
+are too many peers in the group chat and the peer response packet would be
+larger than the maximum size of friend connection packets (1373 bytes), more
+than one peer response packet is sent back. A Title response packet is also
+sent back. This is how the peer that joins a group chat finds out the list of
+peers in the group chat and the title of the group chat right after joining.
+
+Peer response packets are straightforward and contain the information for each
+peer (peer number, real public key, DHT public key, name) appended to each
+other. The title response is also straight forward.
+
+Both the maximum length of groupchat peer names and the groupchat title is 128
+bytes. This is the same maximum length as names in all of toxcore.
+
+When a peer receives the peer response packet(s), they will add each of the
+received peers to their groupchat peer list, find the 4 closest peers to them
+and create groupchat connections to them as was explained previously.
+
+To find their peer number, the peer will find themselves in the list of
+received peers and use the peer number assigned to them as their own.
+
+Message packets are used to send messages to all peers in the groupchat. To
+send a message packet, a peer will first take their peer number and the message
+they want to send. Each message packet sent will have a message number that is
+equal to the last message number sent + 1. Like all other numbers (group chat
+number, peer number) in the packet, the message number in the packet will be in
+big endian format. When a Message packet is received, the peer receiving it
+will take the message number in the packet and see if it is bigger than the one
+it has saved for the peer with peer number. If this is the first Message packet
+being received for this peer then this check is omitted. The message number is
+used to know if a Message packet was already received and relayed to prevent
+packets from looping around the groupchat. If the message number check says
+that the packet was already received, then the packet is discarded. If it was
+not already received, a Message packet with the message is sent (relayed) to
+all current group connections (normal groupchat connections + temporary invited
+groupchat connections) except the one that it was received from. The only thing
+that should change in the Message packet as it is relayed is the group number.
+
+## Message ids
+
+### ping (0x00)
+
+Sent approximately every 60 seconds by every peer. Contains no data.
+
+### `new_peer` (0x10)
+
+Tell everyone about a new peer in the chat.
+
+| Length | Contents               |
+|:-------|:-----------------------|
+| `2`    | `uint16_t` Peer number |
+| `32`   | Long term public key   |
+| `32`   | DHT public key         |
+
+### `kill_peer` (0x11)
+
+| Length | Contents               |
+|:-------|:-----------------------|
+| `2`    | `uint16_t` Peer number |
+
+### Name change (0x30)
+
+| Length   | Contents       |
+|:---------|:---------------|
+| variable | Name (namelen) |
+
+### Groupchat title change (0x31)
+
+| Length   | Contents         |
+|:---------|:-----------------|
+| variable | Title (titlelen) |
+
+### Chat message (0x40)
+
+| Length   | Contents             |
+|:---------|:---------------------|
+| variable | Message (messagelen) |
+
+### Action (/me) (0x41)
+
+| Length   | Contents             |
+|:---------|:---------------------|
+| variable | Message (messagelen) |
+
+Ping messages must be sent every 60 seconds by every peer. This is how other
+peers know that the peers are still alive.
+
+When a new peer joins, the peer which invited the joining peer will send a new
+peer message to warn everyone that there is a new peer in the chat. When a new
+peer message is received, the peer in the packet must be added to the peer
+list.
+
+Kill peer messages are used to indicate that a peer has quit the group chat. It
+is sent by the one quitting the group chat right before they quit it.
+
+name change messages are used to change or set the name of the peer sending it.
+They are also sent by a joining peer right after receiving the list of peers in
+order to tell others what their name is.
+
+title change packets are used to change the title of the group chat and can be
+sent by anyone in the group chat.
+
+Chat and action messages are used by the group chat peers to send messages to
+others in the group chat.
+
+Lossy message packets are used to send audio packets to others in audio group
+chats. Lossy packets work the same way as normal relayed groupchat messages in
+that they are relayed to everyone in the group chat until everyone has them.
+
+Some differences with them though is that first of all the message number is a
+2 byte integer. If I were to improve the groupchats protocol I would make the
+message number for normal message packets 2 bytes. 1 byte means only 256
+packets can be received at the same time. With the delays in groupchats and 256
+packets corresponding to less than a high quality video frame it would not
+work. This is why 2 bytes was chosen.
+
+Note that this message number like all other numbers in the packet are in big
+endian format.
+
+When receiving a lossy packet the peer will first check if it was already
+received. If it wasn't, the packet will be added to the list of received
+packets and then the packet will be passed to its handler and then sent to the
+2 closest connected groupchat peers that are not the sender. The reason for it
+to be 2 instead of 4 (well 3 if we are not the original sender) for normal
+message packets is that it reduces bandwidth usage without lowering the quality
+of the received audio stream via lossy packets. Message packets also are sent
+relatively rarely, enough so that changing it to 2 would have a minimal impact
+in bandwidth usage.
+
+To check if a packet was received, the last up to 65536 received packet numbers
+are stored, current groups store the last 256 packet numbers however that is
+because it is currently audio only. If video was added meaning a much higher
+number of packets would be sent, this number would be increased. If the packet
+number is in this list then it was received.
+
+This is how groupchats in Tox work.
+
+# network.txt
+
+The network module is the lowest file in toxcore that everything else depends
+on. This module is basically a UDP socket wrapper, serves as the sorting ground
+for packets received by the socket, initializes and uninitializes the socket.
+It also contains many socket, networking related and some other functions like
+a monotonic time function used by other toxcore modules.
+
+Things of note in this module are the maximum UDP packet size define
+(`MAX_UDP_PACKET_SIZE`) which sets the maximum UDP packet size toxcore can send
+and receive. The list of all UDP packet ids: `NET_PACKET_*`. UDP packet ids are
+the value of the first byte of each UDP packet and is how each packet gets
+sorted to the right module that can handle it. `networking_registerhandler()`
+is used by higher level modules in order to tell the network object which
+packets to send to which module via a callback.
+
+It also contains datastructures used for ip addresses in toxcore. IP4 and IP6
+are the datastructures for ipv4 and ipv6 addresses, IP is the datastructure for
+storing either (the family can be set to `AF_INET` (ipv4) or `AF_INET6` (ipv6).
+It can be set to another value like `TCP_ONION_FAMILY`, `TCP_INET`, `TCP_INET6`
+or `TCP_FAMILY` which are invalid values in the network modules but valid
+values in some other module and denote a special type of ip) and `IP_Port`
+stores an IP datastructure with a port.
+
+Since the network module interacts directly with the underlying operating
+system with its socket functions it has code to make it work on windows, linux,
+etc... unlike most modules that sit at a higher level.
+
+The network module currently uses the polling method to read from the UDP
+socket. The `networking_poll()` function is called to read all the packets from
+the socket and pass them to the callbacks set using the
+`networking_registerhandler()` function. The reason it uses polling is simply
+because it was easier to write it that way, another method would be better
+here.
+
+The goal of this module is to provide an easy interface to a UDP socket and
+other networking related functions.
 
 # Ping array
 
