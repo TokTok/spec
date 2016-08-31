@@ -22,10 +22,64 @@ bytes (e.g. `32`), a number in bits (e.g. `7` bit), a choice of lengths (e.g.
 `4 | 16`), or an inclusive range (e.g. `[0, 100]`). Open ranges are denoted
 `[n,]` to mean a minimum length of `n` with no specified maximum length.
 
+## TODO: Goals and threat model
+
+This section should give an idea on what are the goals and non-goals of Tox, so
+that reader
+
+-   understands what problems Tox intends to solve
+-   can validate if they are addresed by this specification
+-   can make better tradeoffs and decisions in his own reimplementation of the
+    protocol
+
+(TODO: this is just a placeholder; some more technical description should be
+given)
+
+What Tox Does:
+
+-   Authentication: user's address is its public key, thus "adding friend"
+    actually means verifying key (false in case of toxme?); drawback is that
+    after being compromised you have to generate absolutely new identity; also
+    it complicates working with multiple devices; (TODO: how about some web of
+    trust, master keys and subkeys here?)
+
+-   End-to-end encryption: all the messages are encrypted via keys derived via
+    DH, thus keys are only known to sender and receiver and are never
+    transfered over network
+
+-   Forward secrecy (?): can be achieved by using ephemeral keys (TODO: how are
+    they used in the current protocol? is the problem actually solved?)
+
+-   Reliability:
+    -   Tox is supposed to be fully decentralized network which doesn't depend
+        on any Single Point of Failure; this is achieved by using DHT, though
+        you still need an entry point;
+    -   Tox is supposed to work under (almost) any kind of NAT and firewall;
+        this is achieved by using hole-punching, UPnP and TCP-relays;
+    -   Resistance to basic DoS and other poisoning
+-   (Near-)Zero-conf: end-user should be able to *just* use the messenger;
+
+What Tox Does NOT:
+
+-   Tox does not care about anonymity; Unless TCP mode is used, participants
+    communicate directly to each other; One of the reasons for this is that
+    relaying real-time video is rather too costly (in terms of load) and also
+    means delays;
+    -   Your IP Address is exposed to nodes in your friendlist; They can link
+        your ID directly to IP Address;
+    -   Temporary DHT nodes and onion tunnels are used to find friends, so that
+        your ID cannot be linked to your IP based solely on publicly available
+        data (TODO: i.e. data stored in DHT? what else is exposed?); Though
+        adversary intercepting traffic in large enough network segment
+        is (probably) able to perform some statistical-based attack; (TODO:
+        what problem it is supposed to solve? does it solve it? since we don't
+        care about anonymity, i can only think of prevention of some targeted
+        Denial-of-Service attacks)
+
 ## Integers
 
 The protocol uses four bounded unsigned integer types. Bounded means they have
-a upper bound beyond which incrementing is not defined. The integer types
+an upper bound beyond which incrementing is not defined. The integer types
 support modular arithmetic, so overflow wraps around to zero. Unsigned means
 their lower bound is 0. Signed integer types are not used. The binary encoding
 of all integer types is a fixed-width byte sequence with the integer encoded in
@@ -102,7 +156,7 @@ documentation](https://nacl.cr.yp.to/scalarmult.html) for details.
 
 A Combined Key is computed from a Secret Key and a Public Key using the NaCl
 function `crypto_box_beforenm`. Given two Key Pairs KP1 (SK1, PK1) and KP2
-(SK2, PK1), the Combined Key computed from (SK1, PK2) equals the one computed
+(SK2, PK2), the Combined Key computed from (SK1, PK2) equals the one computed
 from (SK2, PK1). This allows for symmetric encryption, as peers can derive the
 same shared key from their own secret key and their peer's public key.
 
@@ -222,7 +276,7 @@ can be used to simplify the implementation.
 The number `130` is used for an IPv4 TCP relay and `138` is used to indicate an
 IPv6 TCP relay.
 
-The reason for these numbers is because the numbers on Linux for IPv4 and IPv6
+The reason for these numbers is that the numbers on Linux for IPv4 and IPv6
 (the `AF_INET` and `AF_INET6` defines) are `2` and `10`. The TCP numbers are
 just the UDP numbers `+ 128`.
 
@@ -305,17 +359,18 @@ connect directly to them via UDP.
 ## Distance
 
 A Distance is a positive integer. Its human-readable representation is a
-base-16 number. Distance is an [ordered
+base-16 number. Distance (type) is an [ordered
 monoid](https://en.wikipedia.org/wiki/Ordered_semigroup) with the associative
-binary operator `+` and the identity element `0`. When we speak of a "close
-node", we mean that their Distance to the node under consideration is small
-compared to the Distance to other nodes.
+binary operator `+` and the identity element `0`.
 
-The DHT needs a [metric](https://en.wikipedia.org/wiki/Metric_(mathematics)) to
+The DHT uses a [metric](https://en.wikipedia.org/wiki/Metric_(mathematics)) to
 determine distance between two nodes. The Distance type is the co-domain of
 this metric. The metric currently used by the Tox DHT is the `XOR` of the
-nodes' public keys. The public keys are interpreted as Big Endian integers (see
-[Crypto Numbers](#key-1)).
+nodes' public keys: `distance(x, y) = x XOR y`. Public keys are interpreted as
+Big Endian integers (see [Crypto Numbers](#key-1)).
+
+When we speak of a "close node", we mean that its Distance to the node under
+consideration is small compared to the Distance to other nodes.
 
 An implementation is not required to provide a Distance type, so it has no
 specified binary representation. For example, instead of computing a distance
@@ -325,17 +380,31 @@ without computing the complete integral value. This works, because as soon as
 an ordering decision can be made in the most significant bits, further bits
 won't influence that decision.
 
-The XOR metric `d` satisfies the required conditions:
+XOR is a valid metric, i.e. it satisfies the required conditions:
 
-1.  Non-negativity `d(x, y) >= 0`: Since public keys are Crypto Numbers, which
-    are by definition positive, their XOR is necessarily positive.
+1.  Non-negativity `distance(x, y) >= 0`: Since public keys are Crypto Numbers,
+    which are by definition positive, their XOR is necessarily positive.
 
-2.  Identity of indiscernibles `d(x, y) == 0` iff `x == y`: The XOR of two
-    integers is zero iff they are equal.
+2.  Identity of indiscernibles `distance(x, y) == 0` iff `x == y`: The XOR of
+    two integers is zero iff they are equal.
 
-3.  Symmetry `d(x, y) == d(y, x)`: XOR is a symmetric operation.
+3.  Symmetry `distance(x, y) == distance(y, x)`: XOR is a symmetric operation.
 
-4.  Subadditivity `d(x, z) <= d(x, y) + d(y, z)`: TODO.
+4.  Subadditivity `distance(x, z) <= distance(x, y) + distance(y, z)`: follows
+    from associativity, since
+    `x XOR z = x XOR (y XOR y) XOR z = distance(x, y) XOR distance(y, z)` which
+    is not greather than `distance(x,y) + distance(y, z)`
+
+In addition, XOR has other useful properties:
+
+-   Unidirectionality: given the key `x` and the distance `d` there exist one
+    and only one key `y` such that `distance(x, y) = d`.
+
+    The implication is that repeated lookups are likely to pass along the same
+    way and thus caching makes sense
+
+    Source:
+    [maymounkov-kademlia](http://pdos.csail.mit.edu/~petar/papers/maymounkov-kademlia-lncs.pdf)
 
 Example: Given three nodes with keys 2, 5, and 6:
 
@@ -365,7 +434,7 @@ A k-buckets is a map from small integers `0 <= n < 256` to a set of up to `k`
 Node Infos. The set is called a bucket. `k` is called the bucket size. The
 default bucket size is 8.
 
-The number `n` is the bucket index. It is positive integer with the range
+The above number `n` is the bucket index. It is positive integer with the range
 `[0, 255]`, i.e. the range of an 8 bit unsigned integer.
 
 A bucket entry is an element of the bucket. The bucket is an ordered set, and
@@ -375,14 +444,15 @@ set, the last (greatest) element is the furthest away.
 
 ### Bucket Index
 
-The bucket index can be computed using the following function:
+The index of the bucket can be computed using the following function:
 `bucketIndex(baseKey, nodeKey) = 255 - log_2(distance(baseKey, nodeKey))`. This
 function is not defined when `baseKey == nodeKey`, meaning k-buckets will never
-contain a Node Info about the local node.
+contain a Node Info about the base node.
 
 Thus, each k-bucket contains only Node Infos for whose keys the following
 holds: if node with key `nodeKey` is in k-bucket with index `n`, then
-`bucketIndex(baseKey, nodeKey) == n`.
+`bucketIndex(baseKey, nodeKey) == n`. Thus, n'th k-bucket consists of nodes for
+which distance to the base node lies in range `[2^n, 2^(n+1) - 1]`.
 
 The bucket index can be efficiently computed by determining the first bit at
 which the two keys differ, starting from the most significant bit. So, if the
@@ -392,6 +462,11 @@ the bucket index is 1. If the keys are almost exactly equal and only the last
 bit differs, the bucket index is 255.
 
 ### Updating k-buckets
+
+TODO: this is different from kademlia's least-recently-seen eviction policy;
+why the existing solution was chosen, how does it affect security, performance
+and resistance to poisoning? original paper claims that preference of old live
+nodes results in better persistence and resistance to basic DDoS attacks;
 
 Any update or lookup operation on a k-buckets instance that involves a single
 node requires us to first compute the bucket index for that node. An update
@@ -438,10 +513,10 @@ them.
 ## DHT Packet
 
 The DHT Packet contains the sender's DHT Public Key, an encryption Nonce, and
-an encrypted payload. The payload is encrypted with the the DHT secret key of
-the sender, the DHT public key of the receiver, and the nonce that is sent
-along with the packet. DHT Packets are sent inside Protocol Packets with a
-varying Packet Kind.
+an encrypted payload. The payload is encrypted with the DHT secret key of the
+sender, the DHT public key of the receiver, and the nonce that is sent along
+with the packet. DHT Packets are sent inside Protocol Packets with a varying
+Packet Kind.
 
 | Length  | Type       | [Contents](#protocol-packet) |
 |:--------|:-----------|:-----------------------------|
@@ -540,7 +615,7 @@ response has in their list of known nodes.
 
 ### Packed node format
 
-The DHT Send nodes uses the Packed Node Format.
+The DHT Send Nodes uses the Packed Node Format.
 
 Only the UDP Protocol (IP Type `2` and `10`) are used in the DHT module when
 sending nodes with the packed node format. This is because the TCP Protocol is
@@ -569,8 +644,8 @@ closer than the DHT public key of at least one of the nodes in the list to the
 public key being searched with that list. When a node is added to a full list,
 it will replace the furthest node.
 
-If the 32 nodes number where increased, it would increase the amount of packets
-needed to check if each of them are still alive which would increase the
+If the 32 nodes number were increased, it would increase the amount of packets
+needed to check if each of them is still alive which would increase the
 bandwidth usage but reliability would go up. If the number of nodes were
 decreased, reliability would go down along with bandwidth usage. The reason for
 this relationship between reliability and number of nodes is that if we assume
@@ -585,8 +660,8 @@ If the ping timeouts and delays between pings were higher it would decrease the
 bandwidth usage but increase the amount of disconnected nodes that are still
 being stored in the lists. Decreasing these delays would do the opposite.
 
-If the 8 nodes closest to each public key were increased to 16 it would
-increase the bandwidth usage, might increase hole punching efficiency on
+If the number 8 of nodes closest to each public key were increased to 16 it
+would increase the bandwidth usage, might increase hole punching efficiency on
 symmetric NATs (more ports to guess from, see Hole punching) and might increase
 the reliability. Lowering this number would have the opposite effect.
 
@@ -598,7 +673,7 @@ When receiving a get node packet, toxcore will find the 4 nodes, in its nodes
 lists, closest to the public key in the packet and send them in the send node
 response.
 
-The timeouts and number of nodes in lists for toxcore where picked by feeling
+The timeouts and number of nodes in lists for toxcore were picked by feeling
 alone and are probably not the best values. This also applies to the behavior
 which is simple and should be improved in order to make the network resist
 better to sybil attacks.
@@ -617,12 +692,11 @@ DHT Request packets are packets that can be sent across one DHT node to one
 that they know. They are used to send encrypted data to friends that we are not
 necessarily connected to directly in the DHT.
 
-A DHT node that receives a DHT request packet will check whether the node with
-the receivers public key is their DHT public key and, if it is, they will
-decrypt and handle the packet. If it is not they will check whether they know
-that DHT public key (if it's in their list of close nodes). If it isn't, they
-will drop the packet. If it is they will resend the exact packet to that DHT
-node.
+A DHT node that receives a DHT request packet will check whether the receivers
+public key is their DHT public key and, if it is, they will decrypt and handle
+the packet. If it is not they will check whether they know that DHT public key
+(if it's in their list of close nodes). If it isn't, they will drop the packet.
+If it is they will resend the exact packet to that DHT node.
 
 The encrypted message is encrypted using the receiver's DHT Public key, the
 sender's DHT private key and the nonce (randomly generated 24 bytes).
@@ -678,7 +752,7 @@ IP/port for the friend and we send a ping request to each of the returned
 IP/ports but get no response. If we have sent 4 ping requests to 4 IP/ports
 that supposedly belong to the friend and get no response, then this is enough
 for toxcore to start the hole punching. The numbers 8 and 4 are used in toxcore
-and where chosen based on feel alone and so may not be the best numbers.
+and were chosen based on feel alone and so may not be the best numbers.
 
 Before starting the hole punching, the peer will send a NAT ping packet to the
 friend via the peers that say they know the friend. If a NAT ping response with
@@ -713,7 +787,7 @@ we can do for the first option it is recommended to just use the most common IP
 returned by the peers and to ignore the other IP/ports.
 
 In the case where the peers return the same IP and port it means that the other
-friend is on a restricted cone NAT. These kind of NATs can be hole punched by
+friend is on a restricted cone NAT. These kinds of NATs can be hole punched by
 getting the friend to send a packet to our public IP/port. This means that hole
 punching can be achieved easily and that we should just continue sending DHT
 ping packets regularly to that IP/port until we get a ping response. This will
@@ -772,7 +846,7 @@ The LAN Discovery packet:
 LAN Discovery packets contain the DHT public key of the sender. When a LAN
 Discovery packet is received, a DHT get nodes packet will be sent to the sender
 of the packet. This means that the DHT instance will bootstrap itself to every
-peer from which it receives one of these packet. Through this mechanism, Tox
+peer from which it receives one of these packets. Through this mechanism, Tox
 clients will bootstrap themselves automatically from other Tox clients running
 on the local network.
 
@@ -815,9 +889,9 @@ method just adds the friend to `friend_connection` and creates a new friend
 entry in Messenger for the friend.
 
 The Tox ID is used to identify peers so that they can be added as friends in
-Tox. In order to add a friend, a Tox user must have the friend's Tox ID.The Tox
-ID contains the long term public key of the peer (32 bytes) followed by the 4
-byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The
+Tox. In order to add a friend, a Tox user must have the friend's Tox ID. The
+Tox ID contains the long term public key of the peer (32 bytes) followed by the
+4 byte nospam (see: `friend_requests`) value and a 2 byte XOR checksum. The
 method of sending the Tox ID to others is up to the user and the client but the
 recommended way is to encode it in hexadecimal format and have the user
 manually send it to the friend using another program.
@@ -1399,7 +1473,7 @@ The TCP server implementation in toxcore can currently either work on epoll on
 linux or using unoptimized but portable socket polling.
 
 TCP connections between the TCP client and the server are encrypted to prevent
-an outsider from knowing information like who is connecting to who just be
+an outsider from knowing information like who is connecting to whom just be
 looking at someones connection to a TCP server. This is useful when someone
 connects though something like Tor for example. It also prevents someone from
 injecting data in the stream and makes it so we can assume that any data
@@ -1763,7 +1837,7 @@ client must think that this client has simply disconnected from the TCP server.
 
 Disconnect notification (Sent by server to client): Sent by the server to the
 client to tell them that the connection with `connection_id` that was connected
-is now disconnect. It is sent either when the other client of the connection
+is now disconnected. It is sent either when the other client of the connection
 disconnect or when they tell the server to kill the connection (see above).
 
 Ping and Pong packets (can be sent by both client and server, both will
@@ -2130,10 +2204,10 @@ generates each peer number randomly but makes sure newly generated peer numbers
 are not equal to current ones already used by other peers in the group chat. If
 two peers join the groupchat from two different endpoints there is a small
 possibility that both will be given the same peer number however this
-possibility is low enough in practice that is is not an issue.
+possibility is low enough in practice that is not an issue.
 
 Temporary invited groupchat connections are groupchat connections to the
-groupchat inviter used by groupchat peers to bootstrap themselves the the
+groupchat inviter used by groupchat peers to bootstrap themselves the
 groupchat. They are the same thing as connections to groupchat peers via friend
 connections except that they are discarded after the peer is fully connected to
 the group chat.
@@ -2341,11 +2415,11 @@ list.
 Kill peer messages are used to indicate that a peer has quit the group chat. It
 is sent by the one quitting the group chat right before they quit it.
 
-name change messages are used to change or set the name of the peer sending it.
+Name change messages are used to change or set the name of the peer sending it.
 They are also sent by a joining peer right after receiving the list of peers in
 order to tell others what their name is.
 
-title change packets are used to change the title of the group chat and can be
+Title change packets are used to change the title of the group chat and can be
 sent by anyone in the group chat.
 
 Chat and action messages are used by the group chat peers to send messages to
@@ -2458,7 +2532,7 @@ cookie request packet (145 bytes):
 Encrypted message is encrypted with sender's DHT private key, receiver's DHT
 public key and the nonce.
 
-The packet id for cookie request packets is 24. The request contain the DHT
+The packet id for cookie request packets is 24. The request contains the DHT
 public key of the sender which is the key used (The DHT private key) (along
 with the DHT public key of the receiver) to encrypt the encrypted part of the
 cookie packet and a nonce also used to encrypt the encrypted part of the
@@ -2610,8 +2684,8 @@ The states of a connection:
 1.  Not accepted: Send handshake packets.
 
 2.  Accepted: A handshake packet has been received from the other peer but no
-    encrypted encrypted packets: continue (or start) sending handshake packets
-    because the peer can't know if the other has received them.
+    encrypted packets: continue (or start) sending handshake packets because
+    the peer can't know if the other has received them.
 
 3.  Confirmed: A valid encrypted packet has been received from the other peer:
     Connection is fully established: stop sending handshake packets.
@@ -2783,7 +2857,7 @@ numbers (0, 1, 2, 5) and then later a lossy packet with this second number as:
 How the reliability is achieved:
 
 First it is important to say that packet numbers do roll over, the next number
-after 0xFFFFFFFF (maximum value in 4 bytes) is 0. Hence all the mathematical
+after 0xFFFFFFFF (maximum value in 4 bytes) is 0. Hence, all the mathematical
 operations dealing with packet numbers are assumed to be done only on unsigned
 32 bit integer unless said otherwise. For example 0 - 0xFFFFFFFF would equal to
 1 because of the rollover.
@@ -3329,7 +3403,7 @@ public key of Node D and the nonce, and contains:
 | `32`   | Public key that we want those sending back data packets to use |
 | `8`    | Data to send back in response                                  |
 
-If the ping id is zero, respond with a announce response packet.
+If the ping id is zero, respond with an announce response packet.
 
 If the ping id matches the one the node sent in the announce response and the
 public key matches the one being searched for, add the part used to send data
@@ -3570,7 +3644,7 @@ Once the packet is contructed a random 24 byte nonce is generated, the packet
 is encrypted (the shared key used to decrypt the request can be saved and used
 to encrypt the response to save an expensive key derivation operation), the
 data to send back is copied to the unencrypted part and the packet is sent back
-as a onion response packet.
+as an onion response packet.
 
 In order to announce itself using onion announce packets toxcore first takes
 DHT peers, picks random ones and builds onion paths with them by saving 3
@@ -3619,7 +3693,7 @@ ping dead nodes too aggressively.
 
 Toxcore decides if it will send an announce packet to one of the 4 peers in the
 announce response by checking if the peer would be stored as one of the stored
-8 closest peers if it responded; if it would not be it doesn't send a announce
+8 closest peers if it responded; if it would not be it doesn't send an announce
 request, if it would be it sends one.
 
 Peers are only put in the 8 closest peers array if they respond to an announce
@@ -3653,7 +3727,7 @@ need to do a search for friend public keys only when first starting the
 instance (or going offline and back online) as peers starting up after us would
 be able to find us immediately just by searching for us. If we start searching
 for friends after we are announced we prevent a scenario where 2 friends start
-their clients at the same time but are enable to find each other right away
+their clients at the same time but are unable to find each other right away
 because they start searching for each other while they have not announced
 themselves.
 
