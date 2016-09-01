@@ -282,6 +282,7 @@ e.g. [Ping Request (0x00)](#ping-request-0x00).
 | `0x8c`     | Onion Response 3    |
 | `0x8d`     | Onion Response 2    |
 | `0x8e`     | Onion Response 1    |
+| `0xf0`     | Bootstrap Info      |
 
 # DHT
 
