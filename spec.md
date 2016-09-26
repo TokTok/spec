@@ -110,14 +110,6 @@ The Crypto module contains all the functions and data types related to
 cryptography. This includes random number generation, encryption and
 decryption, key generation, operations on nonces and generating random nonces.
 
-## Text
-
-The Tox protocol differentiates between two types of text: Plain Text and
-Cipher Text. Cipher Text may be transmitted over untrusted data channels. Plain
-Text can be Sensitive or Non Sensitive. Sensitive Plain Text must be
-transformed into Cipher Text using the encryption function before it can be
-transmitted over untrusted data channels.
-
 ## Key
 
 A Crypto Number is a large fixed size unsigned (positive) integer. Its binary
@@ -189,6 +181,12 @@ the system as non friends could tie some people's DHT keys and long term keys
 together.
 
 ## Box
+
+The Tox protocol differentiates between two types of text: Plain Text and
+Cipher Text. Cipher Text may be transmitted over untrusted data channels. Plain
+Text can be Sensitive or Non Sensitive. Sensitive Plain Text must be
+transformed into Cipher Text using the encryption function before it can be
+transmitted over untrusted data channels.
 
 The encryption function takes a Combined Key, a Nonce, and a Plain Text, and
 returns a Cipher Text. It uses `crypto_box_afternm` to perform the encryption.
