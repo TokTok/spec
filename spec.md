@@ -28,7 +28,9 @@ This section should give an idea on what are the goals and non-goals of Tox, so
 that reader
 
 -   understands what problems Tox intends to solve
+
 -   can validate if they are addresed by this specification
+
 -   can make better tradeoffs and decisions in his own reimplementation of the
     protocol
 
@@ -51,12 +53,16 @@ What Tox Does:
     they used in the current protocol? is the problem actually solved?)
 
 -   Reliability:
+
     -   Tox is supposed to be fully decentralized network which doesn't depend
         on any Single Point of Failure; this is achieved by using DHT, though
         you still need an entry point;
+
     -   Tox is supposed to work under (almost) any kind of NAT and firewall;
         this is achieved by using hole-punching, UPnP and TCP-relays;
-    -   Resistance to basic DoS and other poisoning
+
+    -   Resistance to basic DoS and other poisoning.
+
 -   (Near-)Zero-conf: end-user should be able to *just* use the messenger;
 
 What Tox Does NOT:
@@ -65,8 +71,10 @@ What Tox Does NOT:
     communicate directly to each other; One of the reasons for this is that
     relaying real-time video is rather too costly (in terms of load) and also
     means delays;
+
     -   Your IP Address is exposed to nodes in your friendlist; They can link
         your ID directly to IP Address;
+
     -   Temporary DHT nodes and onion tunnels are used to find friends, so that
         your ID cannot be linked to your IP based solely on publicly available
         data (TODO: i.e. data stored in DHT? what else is exposed?); Though
@@ -365,8 +373,8 @@ binary operator `+` and the identity element `0`.
 The DHT uses a [metric](https://en.wikipedia.org/wiki/Metric_(mathematics)) to
 determine distance between two nodes. The Distance type is the co-domain of
 this metric. The metric currently used by the Tox DHT is the `XOR` of the
-nodes' public keys: `distance(x, y) = x XOR y`. Public keys are interpreted as
-Big Endian integers (see [Crypto Numbers](#key-1)).
+nodes' public keys: `distance(x, y) = x XOR y`. For this computation, public
+keys are interpreted as Big Endian integers (see [Crypto Numbers](#key-1)).
 
 When we speak of a "close node", we mean that its Distance to the node under
 consideration is small compared to the Distance to other nodes.
@@ -392,7 +400,7 @@ XOR is a valid metric, i.e. it satisfies the required conditions:
 4.  Subadditivity `distance(x, z) <= distance(x, y) + distance(y, z)`: follows
     from associativity, since
     `x XOR z = x XOR (y XOR y) XOR z = distance(x, y) XOR distance(y, z)` which
-    is not greather than `distance(x,y) + distance(y, z)`
+    is not greater than `distance(x, y) + distance(y, z)`.
 
 In addition, XOR has other useful properties:
 
@@ -400,7 +408,7 @@ In addition, XOR has other useful properties:
     and only one key `y` such that `distance(x, y) = d`.
 
     The implication is that repeated lookups are likely to pass along the same
-    way and thus caching makes sense
+    way and thus caching makes sense.
 
     Source:
     [maymounkov-kademlia](http://pdos.csail.mit.edu/~petar/papers/maymounkov-kademlia-lncs.pdf)
@@ -614,7 +622,7 @@ response has in their list of known nodes.
 
 ### Packed node format
 
-The DHT Send Nodes uses the Packed Node Format.
+The DHT Nodes RPC service uses the Packed Node Format.
 
 Only the UDP Protocol (IP Type `2` and `10`) are used in the DHT module when
 sending nodes with the packed node format. This is because the TCP Protocol is
@@ -3125,7 +3133,7 @@ nonce.
 
 Onion packet (request):
 
-Initial (TCP) data sent as the data of a onion packet through the TCP client
+Initial (TCP) data sent as the data of an onion packet through the TCP client
 module:
 
 -   `IP_Port` of node B
