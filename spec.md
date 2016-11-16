@@ -3996,22 +3996,17 @@ Friend:
 Some of the integers in this structure are stored in Big Endian. This is
 denoted with "(BE)".
 
-Unfortunately, toxcore copies the friend structure directly from memory to the
-state file. This makes the state format platform dependent because the way a
-structure is laid out in memory differs across platforms and compilers. A
-common layout of this structure in memory (GCC on x86 and x86\_64) is described
-below and should be accounted for both when serializing and deserializing the
-state file.
-
 | Length | Contents                                                   |
 |:-------|:-----------------------------------------------------------|
 | `1`    | `uint8_t` Status                                           |
 | `32`   | Long term public key                                       |
 | `1024` | Friend request message as a UTF-8 encoded string           |
+| `1`    | PADDING                                                    |
 | `2`    | `uint16_t` Size of the friend request message (BE)         |
 | `128`  | Name as a UTF-8 encoded string                             |
 | `2`    | `uint16_t` Size of the name (BE)                           |
 | `1007` | Status message as a UTF-8 encoded string                   |
+| `1`    | PADDING                                                    |
 | `2`    | `uint16_t` Size of the status message (BE)                 |
 | `1`    | `uint8_t` User status (see also: `USERSTATUS`)             |
 | `3`    | PADDING                                                    |
