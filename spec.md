@@ -4000,12 +4000,12 @@ denoted with "(BE)".
 |:-------|:-----------------------------------------------------------|
 | `1`    | `uint8_t` Status                                           |
 | `32`   | Long term public key                                       |
-| `1024` | Friend request message as a UTF-8 encoded string           |
+| `1024` | Friend request message as a byte string           |
 | `1`    | PADDING                                                    |
 | `2`    | `uint16_t` Size of the friend request message (BE)         |
-| `128`  | Name as a UTF-8 encoded string                             |
+| `128`  | Name as a byte string                             |
 | `2`    | `uint16_t` Size of the name (BE)                           |
-| `1007` | Status message as a UTF-8 encoded string                   |
+| `1007` | Status message as a byte string                   |
 | `1`    | PADDING                                                    |
 | `2`    | `uint16_t` Size of the status message (BE)                 |
 | `1`    | `uint8_t` User status (see also: `USERSTATUS`)             |
