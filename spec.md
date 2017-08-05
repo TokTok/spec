@@ -210,11 +210,6 @@ implementation must be careful to use the correct functions.
 
 `crypto_box` uses xsalsa20 symmetric encryption and poly1305 authentication.
 
-The create and handle request functions are the encrypt and decrypt functions
-for a type of DHT packets used to send data directly to other DHT nodes. To be
-honest they should probably be in the DHT module but they seem to fit better
-here. TODO: What exactly are these functions?
-
 # Node Info
 
 ## Transport Protocol
