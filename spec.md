@@ -256,13 +256,13 @@ and a Public Key. This is sufficient information to start communicating with
 that node. The binary representation of a Node Info is called the "packed node
 format".
 
-| Length   | Type               | Contents                            |
-|:---------|:-------------------|:------------------------------------|
-| `1` bit  | Transport Protocol | UDP = 0, TCP = 1                    |
-| `7` bit  | Address Family     | 2 = IPv4, 10 = IPv6                 |
-| `4 | 16` | IP address         | 4 bytes for IPv4, 16 bytes for IPv6 |
-| `2`      | Port Number        | Port number                         |
-| `32`     | Public Key         | Node ID                             |
+| Length    | Type               | Contents                            |
+|:----------|:-------------------|:------------------------------------|
+| `1` bit   | Transport Protocol | UDP = 0, TCP = 1                    |
+| `7` bit   | Address Family     | 2 = IPv4, 10 = IPv6                 |
+| `4 \| 16` | IP address         | 4 bytes for IPv4, 16 bytes for IPv6 |
+| `2`       | Port Number        | Port number                         |
+| `32`      | Public Key         | Node ID                             |
 
 The packed node format is a way to store the node info in a small yet easy to
 parse format. To store more than one node, simply append another one to the
@@ -3360,12 +3360,12 @@ paths together.
 
 The `IP_Port` is an ip and port in packed format:
 
-| Length   | Contents                                                   |
-|:---------|:-----------------------------------------------------------|
-| `1`      | `TOX_AF_INET` (2) for IPv4 or `TOX_AF_INET6` (10) for IPv6 |
-| `4 | 16` | IP address (4 bytes if IPv4, 16 if IPv6)                   |
-| `12 | 0` | Zeroes                                                     |
-| `2`      | `uint16_t` Port                                            |
+| Length    | Contents                                                   |
+|:----------|:-----------------------------------------------------------|
+| `1`       | `TOX_AF_INET` (2) for IPv4 or `TOX_AF_INET6` (10) for IPv6 |
+| `4 \| 16` | IP address (4 bytes if IPv4, 16 if IPv6)                   |
+| `12 \| 0` | Zeroes                                                     |
+| `2`       | `uint16_t` Port                                            |
 
 If IPv4 the format is padded with 12 bytes of zeroes so that both IPv4 and IPv6
 have the same stored size.
