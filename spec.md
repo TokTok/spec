@@ -1,5 +1,44 @@
 % The Tox Reference
 
+# Content
+
+-   [Introduction](#introduction)
+    -   [Goals and threat model](#todo-goals-and-threat-model)
+    -   [Integers](#integers)
+    -   [Strings](#strings)
+    -   [Key](#key)
+        -   [Key Pair](#key-pair)
+        -   [Combined Key](#combined-key)
+        -   [Nonce](#nonce)
+    -   [Box](#box)
+-   [Node Info](#node-info)
+    -   [Transport Protocol](#transport-protocol)
+    -   [Host Address](#host-address)
+    -   [Port Number](#port-number)
+    -   [Socket Address](#socket-address)
+    -   [Node Info (packed node format)](#node-info-packed-node-format)
+-   [Protocol Packet](#protocol-packet)
+    -   [Packet Kind](#packet-kind)
+-   [DHT](#dht)
+    -   [Distance](#distance)
+    -   [K-buckets](#k-buckets)
+        -   [Bucket Index](#bucket-index)
+        -   [Updating k-buckets](#updating-k-buckets)
+    -   [DHT node state](#dht-node-state)
+    -   [Self-organisation](#self-organisation)
+    -   [DHT Packet](#dht-packet)
+    -   [RPC Services](#rpc-services)
+        -   [Ping Service](#ping-service)
+        -   [Nodes Service](#nodes-service)
+        -   [Packed node format](#packed-node-format)
+    -   [DHT Request packets](#dht-request-packets)
+        -   [NAT ping packets](#nat-ping-packets)
+    -   [Hole punching](#hole-punching)
+    -   [DHT Bootstrap Info](#dht-bootstrap-info-0xf0)
+-   [LAN discovery](#lan-discovery)
+-   [Messenger](#messenger)
+    -   [File Transfer Related Packets](#file-transfer-related-packets)
+
 # Introduction
 
 This document is a textual specification of the Tox protocol and all the
