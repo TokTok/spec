@@ -1750,7 +1750,7 @@ TCP client uses along with the secret key associated with the public key in the
 first 32 bytes of the packet to encrypt the rest of this 'packet'. The
 encrypted part of this packet contains a temporary public key that will be used
 for encryption during the connection and will be discarded after. It also
-contains a base nonce which will be used later for encrypting packets received
+contains a base nonce which will be used later for decrypting packets received
 from the TCP client.
 
 If the server decrypts successfully the encrypted data in the handshake packet
