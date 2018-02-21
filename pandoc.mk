@@ -8,3 +8,4 @@ FORMAT := $(FORMAT)-tex_math_single_backslash
 PANDOC_ARGS :=			\
 	--atx-headers		\
 	--columns=79		\
+	--no-tex-ligatures	\

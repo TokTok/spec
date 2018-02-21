@@ -7,13 +7,88 @@ supporting modules required to implement it. The goal of this document is to
 give enough guidance to permit a complete and correct implementation of the
 protocol.
 
+## Objectives
+
+This section provides an overview of goals and non-goals of Tox. It provides
+the reader with:
+
+-   a basic understanding of what problems Tox intends to solve;
+
+-   a means to validate whether those problems are indeed solved by the
+    protocol as specified;
+
+-   the ability to make better tradeoffs and decisions in their own
+    reimplementation of the protocol.
+
+### Goals
+
+-   **Authentication:** Tox aims to provide authenticated communication. This
+    means that during a communication session, both parties can be sure of the
+    other party's identity. Users are identified by their public key. The
+    initial key exchange is currently not in scope for the Tox protocol. In the
+    future, Tox may provide a means for initial authentication using a
+    challenge/response or shared secret based exchange.
+
+    If the secret key is compromised, the user's identity is compromised, and
+    an attacker can impersonate that user. When this happens, the user must
+    create a new identity with a new public key.
+
+-   **End-to-end encryption:** The Tox protocol establishes end-to-end
+    encrypted communication links. Shared keys are deterministically derived
+    using a Diffie-Hellman-like method, so keys are never transferred over
+    the network.
+
+-   **Forward secrecy**: Session keys are re-negotiated when the peer
+    connection is established.
+
+-   **Resilience:**
+
+    -   Independence of infrastructure: Tox avoids relying on servers as much
+        as possible. Communications are not transmitted via or stored on
+        central servers. Joining a Tox network requires connecting to a
+        well-known node called a bootstrap node. Anyone can run a bootstrap
+        node, and users need not put any trust in them.
+
+    -   Tox tries to establish communication paths in difficult
+        network situations. This includes connecting to peers behind a NAT
+        or firewall. Various techniques help achieve this, such as UDP
+        hole-punching, UPnP, NAT-PMP, other untrusted nodes acting as relays,
+        and DNS tunnels.
+
+    -   Resistance to basic denial of service attacks: short timeouts make the
+        network dynamic and resilient against poisoning attempts.
+
+-   **Minimum configuration:** Tox aims to be nearly zero-conf.
+    User-friendliness is an important aspect to security. Tox aims to make
+    security easy to achieve for average users.
+
+### Non-goals
+
+-   **Anonymity** is not in scope for the Tox protocol itself, but it provides
+    an easy way to integrate with software providing anonymity, such as Tor.
+
+    By default, Tox tries to establish direct connections between peers, so
+    they are aware of each other's IP address. One of the reasons for this is
+    that relaying real-time multimedia conversations over anonymity networks is
+    not feasible with the current network infrastructure.
+
+    The exception is for the initial friend request, where Tox provides a
+    simple onion routing protocol to prevent an attacker from finding the IP
+    address of any arbitrary node by public key. This ability would give an
+    attacker a means for targetted denial of service attacks on users.
+
+## Threat model
+
+TODO(iphydf): Define one.
+
+## Data types
+
 All data types are defined before their first use, and their binary protocol
 representation is given. The protocol representations are normative and must be
 implemented exactly as specified. For some types, human-readable
 representations are suggested. An implementation may choose to provide no such
 representation or a different one. The implementation is free to choose any
-in-memory representation of the specified types, as long as they can be encoded
-to and decoded from the specified protocol representation.
+in-memory representation of the specified types.
 
 Binary formats are specified in tables with length, type, and content
 descriptions. If applicable, specific enumeration types are used, so types may
@@ -21,68 +96,6 @@ be self-explanatory in some cases. The length can be either a fixed number in
 bytes (e.g. `32`), a number in bits (e.g. `7` bit), a choice of lengths (e.g.
 `4 | 16`), or an inclusive range (e.g. `[0, 100]`). Open ranges are denoted
 `[n,]` to mean a minimum length of `n` with no specified maximum length.
-
-## TODO: Goals and threat model
-
-This section should give an idea on what are the goals and non-goals of Tox, so
-that reader
-
--   understands what problems Tox intends to solve
-
--   can validate if they are addresed by this specification
-
--   can make better tradeoffs and decisions in his own reimplementation of the
-    protocol
-
-(TODO: this is just a placeholder; some more technical description should be
-given)
-
-What Tox Does:
-
--   Authentication: user's address is its public key, thus "adding friend"
-    actually means verifying key (false in case of toxme?); drawback is that
-    after being compromised you have to generate absolutely new identity; also
-    it complicates working with multiple devices; (TODO: how about some web of
-    trust, master keys and subkeys here?)
-
--   End-to-end encryption: all the messages are encrypted via keys derived via
-    DH, thus keys are only known to sender and receiver and are never
-    transfered over network
-
--   Forward secrecy (?): can be achieved by using ephemeral keys (TODO: how are
-    they used in the current protocol? is the problem actually solved?)
-
--   Reliability:
-
-    -   Tox is supposed to be fully decentralized network which doesn't depend
-        on any Single Point of Failure; this is achieved by using DHT, though
-        you still need an entry point;
-
-    -   Tox is supposed to work under (almost) any kind of NAT and firewall;
-        this is achieved by using hole-punching, UPnP and TCP-relays;
-
-    -   Resistance to basic DoS and other poisoning.
-
--   (Near-)Zero-conf: end-user should be able to *just* use the messenger;
-
-What Tox Does NOT:
-
--   Tox does not care about anonymity; Unless TCP mode is used, participants
-    communicate directly to each other; One of the reasons for this is that
-    relaying real-time video is rather too costly (in terms of load) and also
-    means delays;
-
-    -   Your IP Address is exposed to nodes in your friendlist; They can link
-        your ID directly to IP Address;
-
-    -   Temporary DHT nodes and onion tunnels are used to find friends, so that
-        your ID cannot be linked to your IP based solely on publicly available
-        data (TODO: i.e. data stored in DHT? what else is exposed?); Though
-        adversary intercepting traffic in large enough network segment is
-        (probably) able to perform some statistical-based attack; (TODO: what
-        problem it is supposed to solve? does it solve it? since we don't care
-        about anonymity, i can only think of prevention of some targeted
-        Denial-of-Service attacks)
 
 ## Integers
 
@@ -120,9 +133,9 @@ decryption, key generation, operations on nonces and generating random nonces.
 
 ## Key
 
-A Crypto Number is a large fixed size unsigned (positive) integer. Its binary
-encoding is as a Big Endian integer in exactly the encoded byte size. Its
-human-readable encoding is as a base-16 number encoded as String. The NaCl
+A Crypto Number is a large fixed size unsigned (non-negative) integer. Its
+binary encoding is as a Big Endian integer in exactly the encoded byte size.
+Its human-readable encoding is as a base-16 number encoded as String. The NaCl
 implementation [libsodium](https://github.com/jedisct1/libsodium) supplies the
 functions `sodium_bin2hex` and `sodium_hex2bin` to aid in implementing the
 human-readable encoding. The in-memory encoding of these crypto numbers in NaCl
@@ -347,15 +360,15 @@ e.g. [Ping Request (0x00)](#ping-request-0x00).
 # DHT
 
 The DHT is a self-organizing swarm of all nodes in the Tox network. A node in
-the Tox network is also called "Tox node". When we talk about "peers", we mean
-any node that is not the local node (the subject). This module takes care of
-finding the IP and port of nodes and establishing a route to them directly via
-UDP using [hole punching](#hole-punching) if necessary. The DHT only runs on
-UDP and so is only used if UDP works.
+the Tox network is also called a "Tox node". When we talk about "peers", we
+mean any node that is not the local node (the subject). This module takes care
+of finding the IP and port of nodes and establishing a route to them directly
+via UDP using [hole punching](#hole-punching) if necessary. The DHT only runs
+on UDP and so is only used if UDP works.
 
-Every node in the Tox DHT has an ephemeral Key Pair called the DHT Key Pair
+Every node in the Tox DHT has an ephemeral Key Pair called the DHT Key Pair,
 consisting of the DHT Secret Key and the DHT Public Key. The DHT Public Key
-acts as the node address. The DHT Key Pair is renewed every time the tox
+acts as the node address. The DHT Key Pair is renewed every time the Tox
 instance is closed or restarted. An implementation may choose to renew the key
 more often, but doing so will disconnect all peers.
 
@@ -371,7 +384,7 @@ monoid](https://en.wikipedia.org/wiki/Ordered_semigroup) with the associative
 binary operator `+` and the identity element `0`.
 
 The DHT uses a [metric](https://en.wikipedia.org/wiki/Metric_(mathematics)) to
-determine distance between two nodes. The Distance type is the co-domain of
+determine the distance between two nodes. The Distance type is the co-domain of
 this metric. The metric currently used by the Tox DHT is the `XOR` of the
 nodes' public keys: `distance(x, y) = x XOR y`. For this computation, public
 keys are interpreted as Big Endian integers (see [Crypto Numbers](#key-1)).
@@ -390,7 +403,8 @@ won't influence that decision.
 XOR is a valid metric, i.e. it satisfies the required conditions:
 
 1.  Non-negativity `distance(x, y) >= 0`: Since public keys are Crypto Numbers,
-    which are by definition positive, their XOR is necessarily positive.
+    which are by definition non-negative, their XOR is
+    necessarily non-negative.
 
 2.  Identity of indiscernibles `distance(x, y) == 0` iff `x == y`: The XOR of
     two integers is zero iff they are equal.
@@ -431,23 +445,49 @@ The closest node from both 2 and 5 is 6. The closest node from 6 is 5 with
 distance 3. This example shows that a key that is close in terms of integer
 addition may not necessarily be close in terms of XOR.
 
+## Client Lists
+
+A Client List of *maximum size* `k` with a given public key as *base key* is an
+ordered set of at most `k` nodes close to the base key. The elements are sorted
+by [distance](#distance) from the base key. Thus, the first (smallest) element
+of the set is the closest one to the base key in that set, the last (greatest)
+element is the furthest away. The maximum size and base key are constant
+throughout the lifetime of a Client List.
+
+A Client List is *full* when the number of nodes it contains is the maximum
+size of the list.
+
+A node is *viable* for entry if the Client List is not *full* or the node's
+public key has a lower distance from the base key than the current entry with
+the greatest distance.
+
+If a node is *viable* and the Client List is *full*, the entry with the
+greatest distance from the base key is removed to keep the size below the
+maximum configured size.
+
+Adding a node whose key already exists will result in an update of the Node
+Info in the Client List. Removing a node for which no Node Info exists in the
+Client List has no effect. Thus, removing a node twice is permitted and has the
+same effect as removing it once.
+
+The iteration order of a Client List is in order of distance from the base key.
+I.e. the first node seen in iteration is the closest, and the last node is the
+furthest away in terms of the distance metric.
+
 ## K-buckets
 
 K-buckets is a data structure for efficiently storing a set of nodes close to a
 certain key called the base key. The base key is constant throughout the
 lifetime of a k-buckets instance.
 
-A k-buckets is a map from small integers `0 <= n < 256` to a set of up to `k`
-Node Infos. The set is called a bucket. `k` is called the bucket size. The
-default bucket size is 8.
+A k-buckets is a map from small integers `0 <= n < 256` to Client Lists of
+maximum size $k$. Each Client List is called a (k-)bucket. A k-buckets is
+equipped with a base key, and each bucket has this key as its base key. `k` is
+called the bucket size. The default bucket size is 8. A large bucket size was
+chosen to increase the speed at which peers are found.
 
-The above number `n` is the bucket index. It is positive integer with the range
-`[0, 255]`, i.e. the range of an 8 bit unsigned integer.
-
-A bucket entry is an element of the bucket. The bucket is an ordered set, and
-the entries are sorted by [distance](#distance) from the base key. Thus, the
-first (smallest) element of the set is the closest one to the base key in that
-set, the last (greatest) element is the furthest away.
+The above number `n` is the bucket index. It is a non-negative integer with the
+range `[0, 255]`, i.e. the range of an 8 bit unsigned integer.
 
 ### Bucket Index
 
@@ -468,7 +508,7 @@ local DHT key starts with e.g. `0x80` and the bucketed node key starts with
 the bucket index is 1. If the keys are almost exactly equal and only the last
 bit differs, the bucket index is 255.
 
-### Updating k-buckets
+### Manipulating k-buckets
 
 TODO: this is different from kademlia's least-recently-seen eviction policy;
 why the existing solution was chosen, how does it affect security, performance
@@ -480,29 +520,93 @@ node requires us to first compute the bucket index for that node. An update
 involving a Node Info with `nodeKey == baseKey` has no effect. If the update
 results in an empty bucket, that bucket is removed from the map.
 
-A bucket is *full* when the bucket contains the maximum number of entries
-configured by the bucket size.
+Adding a node to, or removing a node from, a k-buckets consists of performing
+the corresponding operation on the Client List bucket whose index is that of
+the node's public key, except that adding a new node to a full bucket has no
+effect. A node is considered *viable* for entry if the corresponding bucket is
+not full.
 
-A node is *viable* for entry if the bucket is not *full* or the node's public
-key has a lower distance from the base key than the current entry with the
-greatest distance.
-
-If a node is *viable* and the bucket is *full*, the entry with the greatest
-distance from the base key is removed to keep the bucket size below the maximum
-configured bucket size.
-
-Adding a node whose key already exists will result in an update of the Node
-Info in the bucket. Removing a node for which no Node Info exists in the
-k-buckets has no effect. Thus, removing a node twice is permitted and has the
-same effect as removing it once.
+Iteration order of a k-buckets instance is in order of distance from the base
+key. I.e. the first node seen in iteration is the closest, and the last node is
+the furthest away in terms of the distance metric.
 
 ## DHT node state
 
-Every DHT node contains a Key Pair called the DHT Key Pair.
+Every DHT node contains the following state:
 
-A DHT node also stores a set of Node Infos of nodes that are close to its own
-DHT public key. It uses the [k-buckets](#k-buckets) data structure for this,
-with the local DHT Public Key as the base key.
+-   DHT Key Pair: The Key Pair used to communicate with other DHT nodes. It is
+    immutable throughout the lifetime of the DHT node.
+
+-   DHT Close List: A set of Node Infos of nodes that are close to the DHT
+    Public Key (public part of the DHT Key Pair). The Close List is represented
+    as a [k-buckets](#k-buckets) data structure, with the DHT Public Key as the
+    Base Key.
+
+-   DHT Search List: A list of Public Keys of nodes that the DHT node is
+    searching for, associated with a DHT Search Entry.
+
+A DHT node state is initialised using a Key Pair, which is stored in the state
+as DHT Key Pair and as base key for the Close List. Both the Close and Search
+Lists are initialised to be empty.
+
+### DHT Search Entry
+
+A DHT Search Entry contains a Client List with base key the searched node's
+Public Key. Once the searched node is found, it is also stored in the Search
+Entry.
+
+The maximum size of the Client List is set to 8. (Must be the same or smaller
+than the bucket size of the close list to make sure all the closest peers found
+will know the node being searched (TODO(zugz): this argument is unclear.)).
+
+A DHT node state therefore contains one Client List for each bucket index in
+the Close List, and one Client List for each DHT Search Entry. These lists are
+not required to be disjoint - a node may be in multiple Client Lists
+simultaneously.
+
+A Search Entry is initialised with the searched-for Public Key. The contained
+Client List is initialised to be empty.
+
+### Manipulating the DHT node state
+
+Adding a search key to the DHT node state creates an empty entry in the Search
+Nodes list. If a search entry for the public key already existed, the "add"
+operation has no effect.
+
+Removing a search key removes its search entry and all associated data
+structures from memory.
+
+The iteration order over the DHT state is to first process the Close List
+k-buckets, then the Search List entry Client Lists. Each of these follows the
+iteration order in the corresponding specification.
+
+A node info is considered to be contained in the DHT State if it is contained
+in the Close List or in at least one of the Search Entries.
+
+The size of the DHT state is defined to be the number of node infos it
+contains, counted with multiplicity: node infos contained multiple times, e.g.
+in the close list and in various search entries, are counted as many times as
+they appear. Search keys do not directly count towards the state size. So the
+size of the state is the sum of the sizes of the Close List and the Search
+Entries.
+
+The state size is relevant to later pruning algorithms that decide when to
+remove a node info and when to request a ping from stale nodes. Search keys,
+once added, are never automatically pruned.
+
+Adding a Node Info to the state is done by adding the node to each Node List in
+the state.
+
+When adding a node info to the state, the search entry for the node's public
+key, if it exists, is updated to contain the new node info. All k-buckets and
+Client Lists that already contain the node info will also be updated. See the
+corresponding specifications for the update algorithms. However, a node info
+will not be added to a search entry when it is the node to which the search
+entry is associated (i.e. the node being search for).
+
+Removing a node info from the state removes it from all k-buckets. If a search
+entry for the removed node's public key existed, the node info in that search
+entry is unset. The search entry itself is not removed.
 
 ## Self-organisation
 
@@ -541,9 +645,7 @@ for the [Ping Packet](#ping-service).
 
 A DHT RPC Service consists of a Request packet and a Response packet. A DHT RPC
 Packet contains a payload and a Request ID. This ID is a 64 bit unsigned
-integer that helps identify the response for a given request. The Request ID in
-the response packet must be equal to the Request ID in the request it is
-responding to.
+integer that helps identify the response for a given request.
 
 DHT RPC Packets are encrypted and transported within DHT Packets.
 
@@ -564,12 +666,12 @@ or a Response.
 
 The Request ID provides some resistance against replay attacks. If there were
 no Request ID, it would be easy for an attacker to replay old responses and
-thus provide nodes with out-of-date information. The exact value of the Request
-ID will be specified later in the DHT section.
+thus provide nodes with out-of-date information. A Request ID should be
+randomly generated for each Request which is sent.
 
 ### Ping Service
 
-The Ping Service is used to periodically check if another node is still alive.
+The Ping Service is used to check if a node is responsive.
 
 A Ping Packet payload consists of just a boolean value saying whether it is a
 request or a response.
@@ -599,6 +701,12 @@ A Ping Response is a Ping Packet with the response flag set to True.
 The Nodes Service is used to query another DHT node for up to 4 nodes they know
 that are the closest to a requested node.
 
+The DHT Nodes RPC service uses the Packed Node Format.
+
+Only the UDP Protocol (IP Type `2` and `10`) is used in the DHT module when
+sending nodes with the packed node format. This is because the TCP Protocol is
+used to send TCP relay information and the DHT is UDP only.
+
 #### Nodes Request (0x02)
 
 | Length | Type       | [Contents](#rpc-services) |
@@ -614,109 +722,143 @@ The DHT Public Key sent in the request is the one the sender is searching for.
 | `1`         | Int        |  Number of nodes in the response (maximum 4) |
 | `[39, 204]` | Node Infos | Nodes in Packed Node Format                  |
 
-An IPv4 node is 39 bytes, an IPv6 node is 51 bytes, so the maximum size is
-`51 * 4 = 204` bytes.
+An IPv4 node is 39 bytes, an IPv6 node is 51 bytes, so the maximum size of the
+packed Node Infos is `51 * 4 = 204` bytes.
 
 Nodes responses should contain the 4 closest nodes that the sender of the
-response has in their list of known nodes.
+response has in their lists of known nodes.
 
-### Packed node format
+## DHT Operation
 
-The DHT Nodes RPC service uses the Packed Node Format.
+### DHT Initialisation
 
-Only the UDP Protocol (IP Type `2` and `10`) are used in the DHT module when
-sending nodes with the packed node format. This is because the TCP Protocol is
-used to send TCP relay information and the DHT is UDP only.
+A new DHT node is initialised with a DHT State with a fresh random key pair, an
+empty close list, and a search list containing 2 empty search entries searching
+for randomly generated public keys.
 
-This is done to increase the speed at which peers are found. Toxcore also
-stores the 8 nodes (Must be the same or smaller than the nodes toxcore stores
-for each index in its close list to make sure all the closest peers found will
-know the node being searched) closest to each of the public keys in its DHT
-friends list (or list of DHT public keys that it actively tries to find and
-connect to). Toxcore pings every node in the lists every 60 seconds to see if
-they are alive. It does not store itself in either list and does not send any
-requests to itself. Nodes can be in more than one list for example if the DHT
-public key of the peer is very close to the DHT public key of a friend being
-searched. It also sends get node requests to a random node (random makes it
-unpredictable, predictability or knowing which node a node will ping next could
-make some attacks that disrupt the network more easy as it adds a possible
-attack vector) in each of these lists of nodes every 20 seconds, with the
-search public key being its public key for the closest node and the public key
-being searched for being the ones in the DHT friends list. Nodes are removed
-after 122 seconds of no response. Nodes are added to the lists after a valid
-ping response or send node packet is received from them. If the node is already
-present in the list it is updated if the IP address changed. A node can only be
-added to a list if the list is not full or if the nodes DHT public key is
-closer than the DHT public key of at least one of the nodes in the list to the
-public key being searched with that list. When a node is added to a full list,
-it will replace the furthest node.
+### Periodic sending of Nodes Requests
 
-If the 32 nodes number were increased, it would increase the amount of packets
-needed to check if each of them is still alive which would increase the
-bandwidth usage but reliability would go up. If the number of nodes were
-decreased, reliability would go down along with bandwidth usage. The reason for
-this relationship between reliability and number of nodes is that if we assume
-that not every node has its UDP ports open or is behind a cone NAT it means
-that each of these nodes must be able to store a certain number of nodes behind
-restrictive NATs in order for others to be able to find those nodes behind
-restrictive NATs. For example if 7/8 nodes were behind restrictive NATs, using
-8 nodes would not be enough because the chances of some of these nodes being
-impossible to find in the network would be too high.
+For each Nodes List in the DHT State, every 20 seconds we send a Nodes Request
+to a random node on the list, searching for the base key of the list.
 
-If the ping timeouts and delays between pings were higher it would decrease the
-bandwidth usage but increase the amount of disconnected nodes that are still
-being stored in the lists. Decreasing these delays would do the opposite.
+When a Nodes List first becomes populated with nodes, we send 5 such random
+Nodes Requests in quick succession.
 
-If the number 8 of nodes closest to each public key were increased to 16 it
-would increase the bandwidth usage, might increase hole punching efficiency on
-symmetric NATs (more ports to guess from, see Hole punching) and might increase
-the reliability. Lowering this number would have the opposite effect.
+Random nodes are chosen since being able to predict which node a node will send
+a request to next could make some attacks that disrupt the network easier, as
+it adds a possible attack vector.
 
-When receiving a send node packet, toxcore will check if each of the received
-nodes could be added to any one of the lists. If the node can, toxcore will
-send a ping packet to it, if it cannot it will be ignored.
+Furthermore, we periodically check every node for responsiveness by sending it
+a Nodes Request: for each Nodes List in the DHT State, we send each node on the
+list a Nodes Request every 60 seconds, searching for the base key of the list.
+We remove from the DHT State any node from which we persistently fail to
+receive Nodes Responses.
 
-When receiving a get node packet, toxcore will find the 4 nodes, in its nodes
-lists, closest to the public key in the packet and send them in the send node
-response.
+c-toxcore's implementation of checking and timeouts: A Last Checked time is
+maintained for each node in each list. When a node is added to a list, if doing
+so evicts a node from the list then the Last Checked time is set to that of the
+evicted node, and otherwise it is set to 0. This includes updating an already
+present node. Nodes from which we have not received a Nodes Response for 122
+seconds are considered Bad; they remain in the DHT State, but are
+preferentially overwritten when adding to the DHT State, and are ignored for
+all operations except the once-per-60s checking described above. If we have not
+received a Nodes Response for 182 seconds, the node is not even checked. So one
+check is sent after the node becomes Bad. In the special case that every node
+in the Close List is Bad, they are all checked once more.)
 
-The timeouts and number of nodes in lists for toxcore were picked by feeling
-alone and are probably not the best values. This also applies to the behavior
-which is simple and should be improved in order to make the network resist
-better to sybil attacks.
+hs-toxcore implementation of checking and timeouts: We maintain a Last Checked
+timestamp and a Checks Counter on each node on each Nodes List in the Dht
+State. When a node is added to a list, these are set respectively to the
+current time and to 0. This includes updating an already present node. We
+periodically pass through the nodes on the lists, and for each which is due a
+check, we: check it, update the timestamp, increment the counter, and, if the
+counter is then 2, remove the node from the list. This is pretty close to the
+behaviour of c-toxcore, but much simpler. TODO: currently hs-toxcore doesn't do
+anything to try to recover if the Close List becomes empty. We could maintain a
+separate list of the most recently heard from nodes, and repopulate the Close
+List with that if the Close List becomes empty.
 
-## DHT Request packets
+### Handling Nodes Response packets
 
-| Length | Contents                  |
-|:-------|:--------------------------|
-| `1`    | `uint8_t` (0x20)          |
-| `32`   | receiver's DHT public key |
-| `32`   | sender's DHT public key   |
-| `24`   | nonce                     |
-| `?`    | encrypted message         |
+When we receive a valid Nodes Response packet, we first check that it is a
+reply to a Nodes Request which we sent within the last 60 seconds to the node
+from which we received the response, and that no previous reply has been
+received. If this check fails, the packet is ignored. If the check succeeds,
+first we add to the DHT State the node from which the response was sent. Then,
+for each node listed in the response and for each Nodes List in the DHT State
+which does not currently contain the node and to which the node is viable for
+entry, we send a Nodes Request to the node with the requested public key being
+the base key of the Nodes List.
 
-DHT Request packets are packets that can be sent across one DHT node to one
-that they know. They are used to send encrypted data to friends that we are not
-necessarily connected to directly in the DHT.
+An implementation may choose not to send every such Nodes Request. (c-toxcore
+only sends so many per list (8 for the Close List, 4 for a Search Entry) per
+50ms, prioritising the closest to the base key).
 
-A DHT node that receives a DHT request packet will check whether the receivers
-public key is their DHT public key and, if it is, they will decrypt and handle
-the packet. If it is not they will check whether they know that DHT public key
-(if it's in their list of close nodes). If it isn't, they will drop the packet.
-If it is they will resend the exact packet to that DHT node.
+### Handling Nodes Request packets
 
-The encrypted message is encrypted using the receiver's DHT Public key, the
-sender's DHT private key and the nonce (randomly generated 24 bytes).
+When we receive a Nodes Request packet from another node, we reply with a Nodes
+Response packet containing the 4 nodes in the DHT State which are the closest
+to the public key in the packet. If there are fewer than 4 nodes in the state,
+we reply with all the nodes in the state. If there are no nodes in the state,
+no reply is sent.
 
-DHT request packets are used for DHTPK packets (see onion) and NAT ping
-packets.
+We also send a Ping Request when this is appropriate; see below.
+
+### Handling Ping Request packets
+
+When a valid Ping Request packet is received, we reply with a Ping Response.
+
+We also send a Ping Request when this is appropriate; see below.
+
+### Handling Ping Response packets
+
+When we receive a valid Ping Response packet, we first check that it is a reply
+to a Ping Request which we sent within the last 5 seconds to the node from
+which we received the response, and that no previous reply has been received.
+If this check fails, the packet is ignored. If the check succeeds, we add to
+the DHT State the node from which the response was sent.
+
+### Sending Ping Requests
+
+When we receive a Nodes Request or a Ping Request, in addition to the handling
+described above, we sometimes send a Ping Request. Namely, we send a Ping
+Request to the node which sent the packet if the node is viable for entry to
+the Close List and is not already in the Close List. An implementation may
+(TODO: should?) choose not to send every such Ping Request. (c-toxcore sends at
+most 32 every 2 seconds, preferring closer nodes.)
+
+## DHT Request Packets
+
+DHT Request packets are used to route encrypted data from a sender to another
+node, referred to as the addressee of the packet, via a third node.
+
+A DHT Request Packet is sent as the payload of a Protocol Packet with the
+corresponding Packet Kind. It contains the DHT Public Key of an addressee, and
+a DHT Packet which is to be received by the addressee.
+
+| Length  | Type       | [Contents](#protocol-packet) |
+|:--------|:-----------|:-----------------------------|
+| `32`    | Public Key | Addressee DHT Public Key     |
+| `[72,]` | DHT Packet | DHT Packet                   |
+
+### Handling DHT Request packets
+
+A DHT node that receives a DHT request packet checks whether the addressee
+public key is their DHT public key. If it is, they will decrypt and handle the
+packet. Otherwise, they will check whether the addressee DHT public key is the
+DHT public key of one of the nodes in their Close List. If it isn't, they will
+drop the packet. If it is they will resend the packet, unaltered, to that DHT
+node.
+
+DHT request packets are used for DHT public key packets (see [onion](#onion))
+and NAT ping packets.
 
 ### NAT ping packets
 
-Sits inside the DHT request packet.
+A NAT ping packet is sent as the payload of a DHT request packet.
 
-NAT ping packets are used to see if a friend we are not connected to directly
-is online and ready to do the hole punching.
+We use NAT ping packets to see if a friend we are not connected to directly is
+online and ready to do the hole punching.
 
 #### NAT ping request
 
@@ -734,11 +876,46 @@ is online and ready to do the hole punching.
 | `1`    | `uint8_t` (0x01)                                                 |
 | `8`    | `uint64_t` random number (the same that was received in request) |
 
-## Hole punching
+TODO: handling these packets.
 
-For holepunching we assume that people using Tox are on one of 3 types of NAT:
+### Effects of chosen constants on performance
 
-Cone NATs: Assign one whole port to each UDP socket behind the NAT, any packet
+If the bucket size of the k-buckets were increased, it would increase the
+amount of packets needed to check if each node is still alive, which would
+increase the bandwidth usage, but reliability would go up. If the number of
+nodes were decreased, reliability would go down along with bandwidth usage. The
+reason for this relationship between reliability and number of nodes is that if
+we assume that not every node has its UDP ports open or is behind a cone NAT it
+means that each of these nodes must be able to store a certain number of nodes
+behind restrictive NATs in order for others to be able to find those nodes
+behind restrictive NATs. For example if 7/8 nodes were behind restrictive NATs,
+using 8 nodes would not be enough because the chances of some of these nodes
+being impossible to find in the network would be too high.
+
+TODO(zugz): this seems a rather wasteful solution to this problem.
+
+If the ping timeouts and delays between pings were higher it would decrease the
+bandwidth usage but increase the amount of disconnected nodes that are still
+being stored in the lists. Decreasing these delays would do the opposite.
+
+If the maximum size 8 of the DHT Search Entry Client Lists were increased would
+increase the bandwidth usage, might increase hole punching efficiency on
+symmetric NATs (more ports to guess from, see Hole punching) and might increase
+the reliability. Lowering this number would have the opposite effect.
+
+The timeouts and number of nodes in lists for toxcore were picked by feeling
+alone and are probably not the best values. This also applies to the behavior
+which is simple and should be improved in order to make the network resist
+better to sybil attacks.
+
+TODO: consider giving min and max values for the constants.
+
+## NATs
+
+We assume that peers are either directly accessible or are behind one of 3
+types of NAT:
+
+Cone NATs: Assign one whole port to each UDP socket behind the NAT; any packet
 from any IP/port sent to that assigned port from the internet will be forwarded
 to the socket behind it.
 
@@ -750,6 +927,8 @@ Symmetric NATs: The worst kind of NAT, they assign a new port for each IP/port
 a packet is sent to. They treat each new peer you send a UDP packet to as a
 `'connection'` and will only forward packets from the IP/port of that
 `'connection'`.
+
+## Hole punching
 
 Holepunching on normal cone NATs is achieved simply through the way in which
 the DHT functions.
@@ -919,7 +1098,7 @@ manually send it to the friend using another program.
 
 Tox ID:
 
-![Tox ID](img/tox-id.png)
+![Tox ID](res/images/tox-id.png)
 
 | Length | Contents             |
 |:-------|:---------------------|
@@ -1254,7 +1433,7 @@ a file data size of 0.
 
 The sender will know if the receiver has received the file successfully by
 checking if the friend has received the last `FILE_DATA` packet sent
-(containing the last chunk of the file). `Net_crypto` can be used to check
+(containing the last chunk of the file). `net_crypto` can be used to check
 whether packets sent through it have been received by storing the packet number
 of the sent packet and verifying later in `net_crypto` to see whether it was
 received or not. As soon as `net_crypto` says the other received the packet,
@@ -1699,8 +1878,8 @@ How it accomplishes each of those points:
         connection (no effect).
 
     -   Attacker captures a server response and sends it to the client next
-        time they try to connect to the server: Client will never confirm the
-        connection. (See: `TCP_client`)
+        time they try to connect to the server: Client will never confirm
+        the connection. (See: `TCP_client`)
 
     -   Attacker tries to impersonate a server: They won't be able to decrypt
         the handshake and won't be able to respond.
@@ -1718,8 +1897,8 @@ How it accomplishes each of those points:
 
 1.  2 bytes before each packet of encrypted data denote the length. We assume a
     functioning TCP will deliver bytes in order which makes it work. If the TCP
-    doesn't it most likely means it is under attack and for that see the next
-    point.
+    doesn't it most likely means it is under attack and for that see the
+    next point.
 
 2.  The following attacks are prevented:
 
@@ -2478,6 +2657,404 @@ number is in this list then it was received.
 
 This is how groupchats in Tox work.
 
+# DHT Group Chats
+
+This document details the groupchat implementation, giving a high level
+overview of all the important features and aspects, as well as some important
+low level implementation details. This documentation reflects what is currently
+implemented at the time of writing; it is not speculative. For detailed API
+docs see the groupchats section of the tox.h header file.
+
+## Features
+
+-   Private messages
+
+-   Action messages (/me)
+
+-   Public groups (peers may join via a public key)
+
+-   Private groups (peers require a friend invite)
+
+-   Permanence (a group cannot 'die' as long as at least one peer retains their
+    group credentials)
+
+-   Persistence across client restarts
+
+-   Ability to set peer limits
+
+-   Moderation (kicking, banning, silencing)
+
+-   Permanent group names (set on creation)
+
+-   Topics (may only be set by moderators and the founder)
+
+-   Password protection
+
+-   Self-repairing (auto-rejoin on disconnect, group split protection,
+    state syncing)
+
+-   Identity separation from the Tox ID
+
+-   Ability to ignore peers
+
+-   Unique nicknames which can be set on a per-group basis
+
+-   Peer statuses (online, away, busy) which can be set on a per-group basis
+
+-   Custom parting/exit messages
+
+## Group roles
+
+There are four distinct roles which are hierarchical in nature (higher roles
+have all the privileges of lower roles).
+
+-   **Founder** - The group's creator. May set all other peers roles to
+    anything except founder. May also set the group password, toggle the
+    privacy state, and set the peer limit.
+
+-   **Moderator** - Promoted by the founder. May kick, ban and set the user and
+    observer roles for peers below this role. May also set the topic.
+
+-   **User** - Default non-founder role. May communicate with other
+    peers normally.
+
+-   **Observer** - Demoted by moderators and the founder. May observe the group
+    and ignore peers; may not communicate with other peers or with the group.
+
+## Group types
+
+Groups can have two types: private and public. The type can be set on creation,
+and may also be toggled by the group founder at any point after creation.
+(*Note: password protection is completely independent of the group type*)
+
+### Public
+
+Anyone may join the group using the Chat ID. If the group is public,
+information about peers inside the group, including their IP addresses and
+group public keys (but not their Tox ID's) is visible to anyone with access to
+a node storing their DHT announcement. See the [DHT
+Announcements](#dht-announcements) section for details.
+
+### Private
+
+The only way to join a private group is by having someone in your friend list
+send you an invite. If the group is private, no peer/group information
+(mentioned in the Public section) is present in the DHT; the DHT is not used
+for any purpose at all. If a public group is set to private, all DHT
+information related to the group will expire within a few minutes.
+
+## Cryptography
+
+Groupchats use the [NaCl/libsodium cryptography
+library](https://en.wikipedia.org/wiki/NaCl_(software)) for all cryptography
+related operations. All group communication is end-to-end encrypted. Message
+confidentiality, integrity, and repudability are guaranteed via [authenticated
+encryption](https://en.wikipedia.org/wiki/Authenticated_encryption), and
+[perfect forward secrecy](https://en.wikipedia.org/wiki/Forward_secrecy) is
+also provided.
+
+One of the most important security improvements from the old groupchat
+implementation is the removal of a message-relay mechanism that uses a
+group-wide shared key. Instead, connections are 1-to-1 (a complete graph),
+meaning an outbound message is sent once per peer, and encrypted/decrypted
+using a key unique to each peer. This prevents MITM attacks that were
+previously possible. This additionally ensures that private messages are truly
+private.
+
+Groups make use of 13 unique keys in total: Two permanent keypairs (encryption
+and signature), two group keypairs (encryption and signature), one session
+keypair (encryption), one shared symmetric key (encryption), and one temp DHT
+keypair (encryption).
+
+The Tox ID/Tox public key is not used for any purpose. As such, neither peers
+in a given group nor in the group DHT can be matched with their Tox ID. In
+other words, there is no way of identifying a peer aside from their IP address,
+nickname, and group public key. (*Note: group nicknames can be different from
+the client's main nickname that their friends see*).
+
+### Permanent keypairs
+
+When a peer creates or joins a group they generate two permanent keypairs: an
+encryption keypair and a signature keypair, both of which are unique to the
+group. The two public keys are the only guaranteed way to identify a peer, and
+both keypairs will persist for as long as a peer remains in the group (even
+across client restarts). If a peer exits the group these keypairs will be lost
+forever.
+
+This encryption keypair is not used for any encryption operations except for
+the initial handshake when connecting to another peer. For usage details on the
+signature key, see the [Moderation](#moderation) section.
+
+### Session keypair/shared symmetric key
+
+When two peers establish a connection they each generate a session encryption
+keypair and share one another's resulting public key. With their own session
+secret key and the other's session public key, they will both generate the same
+symmetric encryption key. This symmetric key will be used for all further
+encryption operations between them for the current session (i.e. until one of
+them disconnects).
+
+The purpose of this extra key exchange is to prevent an adversary from
+decrypting messages from previous sessions in event that a secret encryption
+key becomes compromised. This is known as forward secrecy.
+
+### Group keypairs
+
+The group founder generates two additional permanent keypairs when the group is
+created: an encryption keypair, and a signature keypair. The public signature
+key is considered the **Chat ID** and is used as the group's permanent
+identifier, allowing other peers to join public groups via the DHT. Every peer
+in the group holds a copy of the group's public encryption key along with the
+public signature key/Chat ID.
+
+The group secret keys are similar to the permanent keypairs in that they will
+persist across client restarts, but will be lost forever if the founder exits
+the group. This is particularly important as administration related
+functionality will not work without these keys. See the [Founders](#founders)
+section for usage details.
+
+### Temporary DHT keypair
+
+All group related DHT procedures make use of toxcore's temp DHT keypair. This
+keypair is generated when the Tox object is initialized and does not persist
+across client restarts. See the [DHT Announcements](#dht-announcements) section
+for further details.
+
+## Founders
+
+The peer who creates the group is the group's founder. Founders have a set of
+admin privileges, including:
+
+-   Promoting and demoting moderators
+
+-   The ability to kick/ban moderators
+
+-   Setting the peer limit
+
+-   Setting the group's privacy state
+
+-   Setting group passwords
+
+### Shared state
+
+Groups contain a data structure called the **shared state** which is given to
+every peer who joins the group. In this structure resides all data pertaining
+to the group that must only be modifiable by the group founder. This includes
+things like the group name, the group type, the peer limit, and the password.
+Additionally, the shared state holds a copy of the group founder's public
+encryption and signature keys, which is how other peers in the group are able
+to verify the identity of the group founder.
+
+The shared state is signed by the founder using the group secret signature key.
+As the founder is the only peer who holds this secret key, this ensures that
+the shared state may be safely shared by untrusted peers, even in the absence
+of the founder.
+
+When the founder modifies the shared state, he increments the shared state
+version, signs the new shared state data with the group secret signature key,
+and broadcasts the new shared state data along with its signature to the entire
+group. When a peer receives this broadcast, he uses the group public signature
+key to verify that the data was signed with the group secret signature key, and
+also verifies that the new version is not older than the current version.
+
+### Moderation
+
+The founder has the ability to promote other peers to the moderator role.
+Moderators have all the privileges of normal users, and additionally have the
+power to kick, ban, and unban, as well as give peers below the moderator role
+the roles of user and observer (see the [Group roles](#group-roles) section).
+Moderators can also modify the group topic. Moderators have no power over one
+another; only the founder can kick, ban, or change the role of a moderator.
+
+### Kicks/bans
+
+When a peer is kicked or banned from the group, his chat instance and all its
+associated data will be destroyed. This includes all public and secret keys.
+Additionally, the the peer will not receive any notifiactions; it will simply
+appear to them as if the group is inactive.
+
+### Moderator list
+
+Each peer holds a copy of the **moderator list**, which is an array of public
+signature keys of peers who currently have the moderator role (including those
+who are offline). A hash (sha256) of this list called the **`mod_list_hash`**
+is stored in the shared state, which is itself signed by the founder using the
+group secret signature key. This allows the moderator list to be shared between
+untrusted peers, even in the absence of the founder, while maintaining
+moderator verifiability.
+
+When the founder modifies the moderator list, he updates the `mod_list_hash`,
+increments the shared state version, signs the new shared state, broadcasts the
+new shared state data along with its signature to the entire group, then
+broadcasts the new moderator list to the entire group. When a peer receives
+this moderator list (having already verified the new shared state), he creates
+a hash of the new list and verifies that it is identical to the
+`mod_list_hash`.
+
+### Sanctions list
+
+Each peer holds a copy of the **sanctions list**. This list holds two sublists:
+Banned peers, and peers with the observer role, or the **ban list** and the
+**observer list** respectively. The ban list contains entries of peers who have
+been banned, including their last used nickname, IP address/port, and a unique
+ID. The sanctions list contains entries of peers who have been demoted to the
+observer role, including just their public encryption key.
+
+All entries additionally contain a timestamp of the time the entry was made,
+the public signature key of the peer who set the sanction, and a signature of
+the entry's data, which is signed by the peer who created the entry using their
+secret signature key. Individual entries are verified by ensuring that the
+entry's public signature key belongs to the founder or is present in the
+moderator list, and then verifying that the entry's data was signed by the
+owner of that key.
+
+Although each individual entry can be verified, we still need a way to verify
+that the list as a whole is complete and identical for every peer, otherwise
+any peer would be able to remove entries arbitrarily, or replace the list with
+an older version. Therefore each peer holds a copy of the **sanctions list
+credentials**. This is a data structure that holds the version, a hash (sha256)
+of all sanctions list entries plus the version, the public signature key of the
+last peer to have modified the sanctions list, and a signature of the hash,
+which is created by that key.
+
+When a moderator or founder modifies the sanctions list, he will increment the
+version, create a new hash, sign the hash+version with his secret signature
+key, and replace the old public signature key with his own. He will then
+broadcast the new changes (not the entire list) to the entire group along with
+the new credentials. When a peer receives this broadcast, he will verify that
+the new credentials version is not older than the current version and verify
+that the changes were made by a moderator or the founder. If adding an entry,
+he will verify that the entry was signed by the signature key of the entry's
+creator.
+
+When the founder kicks, bans or demotes a moderator, he will first go through
+the sanctions list and re-sign each entry made by that moderator with his own
+founder key, then re-broadcast the sanctions list to the entire group. This is
+necessary to guarantee that all sanctions list entries and its credentials are
+signed by a current moderator or the founder at all times.
+
+**Note:** *The sanctions list is not saved to the Tox save file, meaning that
+if the group ever becomes empty, the sanctions list will be reset. This is in
+contrast to the shared state and moderator list, which are both saved and will
+persist even if the group becomes empty.*
+
+## Topics
+
+Founders and moderators have the ability to set the **topic**, which is simply
+an arbitrary string of characters. The integrity of a topic is maintained in a
+similar manner as sanctions entries, using a data structure called
+**`topic_info`**. This is a struct which contains the topic, a version, and the
+public key of the peer who set it.
+
+When a peer modifies the topic, they will increment the version, sign the new
+topic+version with their secret signature key, replace the public key with
+their own, then broadcast the new `topic_info` data along with the signature to
+the entire group. When a peer receives this broadcast, they will first check if
+the public signature key of the setter either belongs to the founder, or is in
+the moderator list. They will then verify the signature using the setter's
+public signature key, and finally they will ensure that the version is not
+older than the current topic version.
+
+If the moderator who set the current topic is kicked, banned, or demoted, the
+founder will re-sign the topic using his own signature key, and rebroadcast it
+to the entire group.
+
+## State syncing
+
+Peers send four unsigned 32-bit integers along with their ping packets: Their
+peer count\[1\], their shared state version, their sanctions credentials
+version, and their topic version. If a peer receives a ping in which any of
+these values are greater than their own, this indicates that they may be out of
+sync with the rest of the group. In this case they will do one of two things:
+If they already have a sync request flagged for this peer, they will send a
+sync request. Otherwise they will set the flag and wait until the next ping
+arrives (this waiting is to correct for false-positives in the case of high
+network latency). The flag is reset after a sync request is sent, or whenever a
+ping is received in which all data is in sync.
+
+## Group syncing
+
+In order to prevent entirely separate subgroups with the same Chat ID from
+being created, be it due to network issues or a malicious MITM attempt, it's
+necessary for groups to periodically search the DHT for announced nodes that
+match the group's Chat ID but are not present in the group. In case an unknown
+node is found, an attempt will be made to connect with it. If successful, the
+state sync mechanism will merge the subgroups shortly.
+
+Since we don't want to spam the DHT with a redundant number of requests that
+grows linearly with the size of the group, peers will take turns doing the
+search. Peers decide independently if it's their turn to search. Each peer has
+the same base timer T, and every interval of T they will do a search with a
+probability P which is inversely proportionate to the number of peers N. For
+example, if N=1 then P=1.0. If N=4 then P=0.25. If N=100 then P=0.01 and so on.
+This guarantees that a given group will do 1 search per T interval on average
+regardless of its size, and it also ensures that a full spectrum of the network
+is searched. Moreover, because peers act independently rather than in
+coordination, malicious peers have little exploit potential (e.g. attempting to
+stop the group from searching the DHT).
+
+In addition, peers who join a group via the DHT will attempt to connect to any
+nodes that are not in their freshly synced peer list.
+
+## DHT Announcements
+
+Groupchats make use of the Tox DHT network in order to allow for groups that
+can be joined by anyone who possesses the Chat ID. As all of the information
+stored in or passed through the DHT can be viewed by any of the involved nodes,
+these types of groups are considered to be public. Private groups in contrast
+do not make use of the DHT for any purpose, and as such require a friend invite
+in order to join.
+
+### Announcement requests
+
+When peers create or successfully join a public group they send an
+**announcement request**, containing information about the group that they're
+announcing and themselves to K of their close DHT nodes. The information in
+this request includes the announcer's group public encryption key and IP
+address/port, as well as the Chat ID of the group. The DHT attempts to store
+this announcement in the node that's closest to the Chat ID (**closeness** is
+calculated by the DHT's close function). DHT nodes can store up to N
+announcements each, after which they will replace the oldest announcements
+first. See the [Redundancy](#redundancy) section for details on how DDoS
+attacks are mitigated.
+
+### Get nodes requests
+
+When peers attempt to join a public group using the Chat ID they send a **get
+nodes request**, containing their IP/port, their group public encryption key,
+and the Chat ID to K of their close nodes. Those nodes will then check if any
+of their announcement entries match the supplied Chat ID. If not, they will
+relay the message to K of their own close nodes who will repeat the process
+(note that the close function guarantees that each successive relay will bring
+us closer to the Chat ID until we either find one of its entries, or have
+traversed the entire DHT network).
+
+Once a node finds an entry with the queried Chat ID it will send a **send nodes
+response** to the original node who made the request. The response will contain
+at least one entry (possibly more) which will hold the group public encryption
+key and the IP address/port of a peer who had previously made an announcement
+request for Chat ID. With this information the requester will automatically
+initiate the handshake protocol and attempt to join the group.
+
+### Redundancy
+
+DHT nodes will send ping requests to all of their announcement entries
+periodically in order to ensure that they are still present in the
+network/group. When a peer goes offline or leaves a group, they no longer
+respond to these ping requests, and the nodes holding their entries will
+discard them.
+
+There are scenarios in which an announcement may be dropped from the network,
+such as if the sole node holding the entry goes offline, or in the case of DDOS
+attack which attempts to push all old entries out of the DHT. In order to
+ensure that those announcements are not permanently lost, announcers will
+periodically check when they last received a ping request for a given
+announcement. After a certain amount of time without receiving a ping request
+they will assume that their entry is no longer in the DHT network and
+re-announce themselves. This ensures that every peer present in a group has an
+active announcement in the DHT at all times, and it also ensures that a group
+cannot become 'lost'.
+
 # Net crypto
 
 The Tox transport protocol is what Tox uses to establish and send data securely
@@ -2749,8 +3326,8 @@ requirements:
 
 1.  The handshake must not leak the long term public keys of the peers to a
     possible attacker who would be looking at the packets but each peer must
-    know for sure that they are connecting to the right peer and not an
-    impostor.
+    know for sure that they are connecting to the right peer and not
+    an impostor.
 
 2.  A connection must be able of being established if only one of the peers has
     the information necessary to initiate a connection (DHT public key of the
@@ -3050,7 +3627,7 @@ a monotonic time function used by other toxcore modules.
 
 Things of note in this module are the maximum UDP packet size define
 (`MAX_UDP_PACKET_SIZE`) which sets the maximum UDP packet size toxcore can send
-and receive. The list of all UDP packet ids: `NET_PACKET_*`. UDP packet ids are
+and receive. The list of all UDP packet ids: `NET_PACKET_`. UDP packet ids are
 the value of the first byte of each UDP packet and is how each packet gets
 sorted to the right module that can handle it. `networking_registerhandler()`
 is used by higher level modules in order to tell the network object which
@@ -3313,7 +3890,6 @@ initial (sent from node D to node C):
 -   Encrypted with the temporary symmetric key of Node A and the nonce:
 
     -   `IP_Port` (of us)
-
 -   Data to send back
 
 (sent from node A to us):
@@ -3624,14 +4200,13 @@ cannot generate `ping_id`s and must ask for them. The reason for the 2
 `ping_id`s is that we want to make sure that the timeout is at least 20 seconds
 and cannot be 0.
 
-If one of the two ping ids is equal to the public key used to encrypt the
-announce packet (the pk the peer is announcing himself as), the sendback data
-public key and the sendback data are stored in the datastructure used to store
-announced peers. If the implementation has a limit to how many announced
-entries it can store, it should only store the entries closest (determined by
-the DHT distance function) to its DHT public key. If the entry is already
-there, the information will simply be updated with the new one and the timeout
-will be reset for that entry.
+If one of the two ping ids is equal to the ping id in the announce request, the
+sendback data public key and the sendback data are stored in the datastructure
+used to store announced peers. If the implementation has a limit to how many
+announced entries it can store, it should only store the entries closest
+(determined by the DHT distance function) to its DHT public key. If the entry
+is already there, the information will simply be updated with the new one and
+the timeout will be reset for that entry.
 
 Toxcore has a timeout of 300 seconds for announce entries after which they are
 removed which is long enough to make sure the entries don't expire prematurely
@@ -3642,9 +4217,9 @@ Toxcore will then copy the 4 DHT nodes closest to the public key being searched
 to a new packet (the response).
 
 Toxcore will look if the public key being searched is in the datastructure. If
-it isn't it will copy the first generated `ping_id` (the one generated with the
-current time) to the response, set the `is_stored` number to 0 and send the
-packet back.
+it isn't it will copy the second generated `ping_id` (the one generated with
+the current time plus 20 seconds) to the response, set the `is_stored` number
+to 0 and send the packet back.
 
 If the public key is in the datastructure, it will check whether the public key
 that was used to encrypt the announce packet is equal to the announced public
@@ -3655,11 +4230,11 @@ public key in the announce entry is copied to the packet.
 If it (key used to encrypt the announce packet) is equal (to the announced
 public key which is also the 'public key we are searching for' in the announce
 packet) meaning the peer is announcing itself and an entry for it exists, the
-sending back data public key is checked to see if it equals the one it the
+sending back data public key is checked to see if it equals the one in the
 packet. If it is not equal it means that it is outdated, probably because the
 announcing peer's toxcore instance was restarted and so their `is_stored` is
 set to 0, if it is equal it means the peer is announced correctly so the
-`is_stored` is set to 2. The first generated `ping_id` is then copied to the
+`is_stored` is set to 2. The second generated `ping_id` is then copied to the
 packet.
 
 Once the packet is contructed a random 24 byte nonce is generated, the packet
@@ -3703,27 +4278,30 @@ tried at a time. A too high number meanwhile would mean each path is used (and
 tested) less. The reason why the numbers are the same for both types of paths
 is for code simplification purposes.
 
-To search/announce itself to peers, toxcore keeps the 8 closest peers to each
-key it is searching (or announcing itself to). To populate these it starts by
-sending announce requests to random peers for all the public keys it is
-searching for. It then recursively searches closer and closer peers (DHT
-distance function) until it no longer finds any. It is important to make sure
-it is not too aggressive at searching the peers as some might no longer be
+To search/announce itself to peers, toxcore keeps the 8 closest peers (12 for
+announcing) to each key it is searching (or announcing itself to). To populate
+these it starts by sending announce requests to random peers for all the public
+keys it is searching for. It then recursively searches closer and closer peers
+(DHT distance function) until it no longer finds any. It is important to make
+sure it is not too aggressive at searching the peers as some might no longer be
 online but peers might still send announce responses with their information.
 Toxcore keeps lists of last pinged nodes for each key searched so as not to
 ping dead nodes too aggressively.
 
 Toxcore decides if it will send an announce packet to one of the 4 peers in the
 announce response by checking if the peer would be stored as one of the stored
-8 closest peers if it responded; if it would not be it doesn't send an announce
+closest peers if it responded; if it would not be it doesn't send an announce
 request, if it would be it sends one.
 
-Peers are only put in the 8 closest peers array if they respond to an announce
+Peers are only put in the closest peers array if they respond to an announce
 request. If the peers fail to respond to 3 announce requests they are deemed
-timed out and removed.
+timed out and removed. When sending an announce request to a peer to which we
+have been announcing ourselves for at least 90 seconds and which has failed to
+respond to the previous 2 requests, toxcore uses a random path for the request.
+This reduces the chances that a good node will be removed due to bad paths.
 
-The reason for the number of peers being 8 is that a lower number might make
-searching for and announcing too unreliable and a higher number too
+The reason for the numbers of peers being 8 and 12 is that lower numbers might
+make searching for and announcing too unreliable and a higher number too
 bandwidth/resource intensive.
 
 Toxcore uses `ping_array` (see `ping_array`) for the 8 byte sendback data in
@@ -3735,13 +4313,18 @@ unencrypted part of the packet is the right public key.
 
 For peers we are announcing ourselves to, if we are not announced to them
 toxcore tries every 3 seconds to announce ourselves to them until they return
-that we have announced ourselves to, then toxcore sends an announce request
-packet every 15 seconds to see if we are still announced and re announce
-ourselves at the same time. The timeout of 15 seconds means a `ping_id`
-received in the last packet will not have had time to expire (20 second minimum
-timeout) before it is resent 15 seconds later. Toxcore sends every announce
-packet with the `ping_id` previously received from that peer with the same path
-(if possible).
+that we have announced ourselves to them, then initially toxcore sends an
+announce request packet every 15 seconds to see if we are still announced and
+reannounce ourselves at the same time. The timeout of 15 seconds means a
+`ping_id` received in the last packet will not have had time to expire (20
+second minimum timeout) before it is resent 15 seconds later. Toxcore sends
+every announce packet with the `ping_id` previously received from that peer
+with the same path (if possible). Toxcore use a timeout of 120 seconds rather
+than 15 seconds if we have been announcing to the peer for at least 90 seconds,
+and the onion path we are are using for the peer has also been alive for at
+least 90 seconds, and we have not been waiting for at least 15 seconds for a
+response to a request sent to the peer, nor for at least 10 seconds for a
+response to a request sent via the path.
 
 For friends this is slightly different. It is important to start searching for
 friends after we are fully announced. Assuming a perfect network, we would only
@@ -3753,10 +4336,16 @@ their clients at the same time but are unable to find each other right away
 because they start searching for each other while they have not announced
 themselves.
 
-For this reason, after the peer is announced successfully for 17 seconds,
+For this reason, after the peer is announced successfully, for 17 seconds
 announce packets are sent aggressively every 3 seconds to each known close peer
 (in the list of 8 peers) to search aggressively for peers that know the peer we
 are searching for.
+
+After this, toxcore sends requests once per 15 seconds initially, then uses
+linear backoff to increase the interval. In detail, the interval used when
+searching for a given friend is at least 15 and at most 2400 seconds, and
+within these bounds is calculated as one quarter of the time since we began
+searching for the friend or some peer reported that the friend was announced.
 
 There are other ways this could be done and which would still work but, if
 making your own implementation, keep in mind that these are likely not the most
@@ -3849,7 +4438,7 @@ If a friend is online and connected to us, the onion will stop all of its
 actions for that friend. If the peer goes offline it will restart searching for
 the friend as if toxcore was just started.
 
-If toxcore goes offline (no onion traffic for 20 seconds) toxcore will
+If toxcore goes offline (no onion traffic for 75 seconds) toxcore will
 aggressively reannounce itself and search for friends as if it was just
 started.
 
@@ -4071,14 +4660,18 @@ content and thus it's length is 0.
 
 # Testing
 
-The final part of the architecture is the test protocol. We use a
-[MessagePack](http://msgpack.org) based RPC protocol to expose language
-agnostic interfaces to internal functions. Using property based testing with
-random inputs as well as specific edge case tests help ensure that an
-implementation of the Tox protocol following the architecture specified in this
-document is correct.
+The final part of the architecture is the test protocol. We use a MessagePack
+(<https://msgpack.org>) based RPC protocol to expose language agnostic
+interfaces to internal functions. Using property based testing with random
+inputs as well as specific edge case tests help ensure that an implementation
+of the Tox protocol following the architecture specified in this document is
+correct.
 
 See the [spec](https://github.com/msgpack/msgpack/blob/master/spec.md) of
 msgpack for information on the binary representation.
 
 TODO(iphydf): Generate and add specifications of each test method here.
+
+\[1\] We use a "real" peer count, which is the number of confirmed peers in the
+peerlist (that is, peers who you have successfully handshaked and exchanged
+peer info with).
