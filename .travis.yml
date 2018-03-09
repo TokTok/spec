@@ -20,3 +20,7 @@ script:
 - make format
 # Check that make format was executed before submitting.
 - git diff --exit-code
+# Check that hs-toxcore was updated.
+- git clone --depth=1 https://github.com/TokTok/hs-toxcore ../hs-toxcore
+- (cd ../hs-toxcore && make doc)
+- git diff --exit-code
