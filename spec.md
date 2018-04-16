@@ -1804,10 +1804,10 @@ different peers will have the same public key so this is the correct behavior.
 
 Encrypted data packets look like this to outsiders:
 
-| Length   | Contents                  |
-|:---------|:--------------------------|
-| `2`      | `uint16_t` length of data |
-| variable | encrypted data            |
+| Length | Contents                  |
+|:-------|:--------------------------|
+| `2`    | `uint16_t` length of data |
+| `[0,]` | encrypted data            |
 
 In a TCP stream they would look like:
 `[[length][data]][[length][data]][[length][data]]...`.
@@ -1967,19 +1967,19 @@ rpid is invalid `connection_id` (0) if refused, `connection_id` if accepted.
 
 ### OOB send (0x06)
 
-| Length   | Contents               |
-|:---------|:-----------------------|
-| `1`      | `uint8_t` (0x06)       |
-| `32`     | Destination public key |
-| variable | Data                   |
+| Length | Contents               |
+|:-------|:-----------------------|
+| `1`    | `uint8_t` (0x06)       |
+| `32`   | Destination public key |
+| `[0,]` | Data                   |
 
 ### OOB recv (0x07)
 
-| Length   | Contents          |
-|:---------|:------------------|
-| `1`      | `uint8_t` (0x07)  |
-| `32`     | Sender public key |
-| variable | Data              |
+| Length | Contents          |
+|:-------|:------------------|
+| `1`    | `uint8_t` (0x07)  |
+| `32`   | Sender public key |
+| `[0,]` | Data              |
 
 ### Onion packet (0x08)
 
@@ -1991,11 +1991,11 @@ Same format as onion packet but packet id is 0x09 instead of 0x8e.
 
 ### Data (0x10 and up)
 
-| Length   | Contents                |
-|:---------|:------------------------|
-| `1`      | `uint8_t` packet id     |
-| `1`      | `uint8_t` connection id |
-| variable | data                    |
+| Length | Contents                |
+|:-------|:------------------------|
+| `1`    | `uint8_t` packet id     |
+| `1`    | `uint8_t` connection id |
+| `[0,]` | data                    |
 
 The TCP server is set up in a way to minimize waste while relaying the many
 packets that might go between two tox peers hence clients must create
@@ -2147,10 +2147,10 @@ connect to each other using the relays. The packet id or first byte of the
 packet of share relay packets is 0x11. This is then followed by some TCP relays
 stored in packed node format.
 
-| Length   | Contents                                   |
-|:---------|:-------------------------------------------|
-| `1`      | `uint8_t` (0x11)                           |
-| variable | TCP relays in packed node format (see DHT) |
+| Length | Contents                                   |
+|:-------|:-------------------------------------------|
+| `1`    | `uint8_t` (0x11)                           |
+| `[0,]` | TCP relays in packed node format (see DHT) |
 
 If local IPs are received as part of the packet, the local IP will be replaced
 with the IP of the peer that sent the relay. This is because we assume this is
@@ -2471,12 +2471,12 @@ Peer query packet:
 
 Peer response packet:
 
-| Length   | Contents                                   |
-|:---------|:-------------------------------------------|
-| `1`      | `uint8_t` (0x62)                           |
-| `2`      | `uint16_t` group number                    |
-| `1`      | `uint8_t` (0x09)                           |
-| variable |  Repeated times number of peers: Peer info |
+| Length | Contents                                   |
+|:-------|:-------------------------------------------|
+| `1`    | `uint8_t` (0x62)                           |
+| `2`    | `uint16_t` group number                    |
+| `1`    | `uint8_t` (0x09)                           |
+| `[0,]` |  Repeated times number of peers: Peer info |
 
 The Peer info structure is as follows:
 
@@ -2490,34 +2490,34 @@ The Peer info structure is as follows:
 
 Title response packet:
 
-| Length   | Contents                |
-|:---------|:------------------------|
-| `1`      | `uint8_t` (0x62)        |
-| `2`      | `uint16_t` group number |
-| `1`      | `uint8_t` (0x0a)        |
-| variable | Title                   |
+| Length | Contents                |
+|:-------|:------------------------|
+| `1`    | `uint8_t` (0x62)        |
+| `2`    | `uint16_t` group number |
+| `1`    | `uint8_t` (0x0a)        |
+| `[0,]` | Title                   |
 
 Message packets:
 
-| Length   | Contents                                          |
-|:---------|:--------------------------------------------------|
-| `1`      | `uint8_t` (0x63)                                  |
-| `2`      | `uint16_t` group number                           |
-| `2`      | `uint16_t` peer number                            |
-| `4`      | `uint32_t` message number                         |
-| `1`      | `uint8_t` with a value representing id of message |
-| variable | Data                                              |
+| Length | Contents                                          |
+|:-------|:--------------------------------------------------|
+| `1`    | `uint8_t` (0x63)                                  |
+| `2`    | `uint16_t` group number                           |
+| `2`    | `uint16_t` peer number                            |
+| `4`    | `uint32_t` message number                         |
+| `1`    | `uint8_t` with a value representing id of message |
+| `[0,]` | Data                                              |
 
 Lossy Message packets:
 
-| Length   | Contents                                          |
-|:---------|:--------------------------------------------------|
-| `1`      | `uint8_t` (0xc7)                                  |
-| `2`      | `uint16_t` group number                           |
-| `2`      | `uint16_t` peer number                            |
-| `4`      | `uint16_t` message number                         |
-| `1`      | `uint8_t` with a value representing id of message |
-| variable | Data                                              |
+| Length | Contents                                          |
+|:-------|:--------------------------------------------------|
+| `1`    | `uint8_t` (0xc7)                                  |
+| `2`    | `uint16_t` group number                           |
+| `2`    | `uint16_t` peer number                            |
+| `4`    | `uint16_t` message number                         |
+| `1`    | `uint8_t` with a value representing id of message |
+| `[0,]` | Data                                              |
 
 If a peer query packet is received, the receiver takes his list of peers and
 creates a peer response packet which is then sent to the other peer. If there
@@ -2582,27 +2582,27 @@ Tell everyone about a new peer in the chat.
 
 ### Name change (0x30)
 
-| Length   | Contents       |
-|:---------|:---------------|
-| variable | Name (namelen) |
+| Length | Contents       |
+|:-------|:---------------|
+| `[0,]` | Name (namelen) |
 
 ### Groupchat title change (0x31)
 
-| Length   | Contents         |
-|:---------|:-----------------|
-| variable | Title (titlelen) |
+| Length | Contents         |
+|:-------|:-----------------|
+| `[0,]` | Title (titlelen) |
 
 ### Chat message (0x40)
 
-| Length   | Contents             |
-|:---------|:---------------------|
-| variable | Message (messagelen) |
+| Length | Contents             |
+|:-------|:---------------------|
+| `[0,]` | Message (messagelen) |
 
 ### Action (/me) (0x41)
 
-| Length   | Contents             |
-|:---------|:---------------------|
-| variable | Message (messagelen) |
+| Length | Contents             |
+|:-------|:---------------------|
+| `[0,]` | Message (messagelen) |
 
 Ping messages must be sent every 60 seconds by every peer. This is how other
 peers know that the peers are still alive.
@@ -3345,11 +3345,11 @@ peers.
 
 Encrypted packets:
 
-| Length   | Contents                                                      |
-|:---------|:--------------------------------------------------------------|
-| `1`      | `uint8_t` (0x1b)                                              |
-| `2`      | `uint16_t` The last 2 bytes of the nonce used to encrypt this |
-| variable |  Payload                                                      |
+| Length | Contents                                                      |
+|:-------|:--------------------------------------------------------------|
+| `1`    | `uint8_t` (0x1b)                                              |
+| `2`    | `uint16_t` The last 2 bytes of the nonce used to encrypt this |
+| `[0,]` |  Payload                                                      |
 
 The payload is encrypted with the session key and 'base nonce' set by the
 receiver in their handshake + packet number (starting at 0, big endian math).
@@ -4009,13 +4009,13 @@ to our list. If the list is full make it replace the furthest entry.
 
 data to route request packet:
 
-| Length   | Contents                            |
-|:---------|:------------------------------------|
-| `1`      | `uint8_t` (0x85)                    |
-| `32`     | Public key of destination node      |
-| `24`     | Nonce                               |
-| `32`     | Temporary just generated public key |
-| variable | Payload                             |
+| Length | Contents                            |
+|:-------|:------------------------------------|
+| `1`    | `uint8_t` (0x85)                    |
+| `32`   | Public key of destination node      |
+| `24`   | Nonce                               |
+| `32`   | Temporary just generated public key |
+| `[0,]` | Payload                             |
 
 The payload is encrypted with that temporary secret key and the nonce and the
 public key from the announce response packet of the destination node. If Node D
@@ -4024,38 +4024,38 @@ to route response packet to the right node.
 
 The data in the previous packet is in format:
 
-| Length   | Contents                  |
-|:---------|:--------------------------|
-| `32`     | Real public key of sender |
-| variable |  Payload                  |
+| Length | Contents                  |
+|:-------|:--------------------------|
+| `32`   | Real public key of sender |
+| `[0,]` |  Payload                  |
 
 The payload is encrypted with real secret key of the sender, the nonce in the
 data packet and the real public key of the receiver:
 
-| Length   | Contents         |
-|:---------|:-----------------|
-| `1`      | `uint8_t` id     |
-| variable |  Data (optional) |
+| Length | Contents         |
+|:-------|:-----------------|
+| `1`    | `uint8_t` id     |
+| `[0,]` |  Data (optional) |
 
 Data sent to us:
 
 announce response packet:
 
-| Length   | Contents                      |
-|:---------|:------------------------------|
-| `1`      | `uint8_t` (0x84)              |
-| `8`      | Data to send back in response |
-| `24`     | Nonce                         |
-| variable | Payload                       |
+| Length | Contents                      |
+|:-------|:------------------------------|
+| `1`    | `uint8_t` (0x84)              |
+| `8`    | Data to send back in response |
+| `24`   | Nonce                         |
+| `[0,]` | Payload                       |
 
 The payload is encrypted with the DHT secret key of Node D, the public key in
 the request and the nonce:
 
-| Length   | Contents                                           |
-|:---------|:---------------------------------------------------|
-| `1`      |  `uint8_t` `is_stored`                             |
-| `32`     | Ping ID or Public Key                              |
-| variable | Maximum of 4 nodes in packed node format (see DHT) |
+| Length | Contents                                           |
+|:-------|:---------------------------------------------------|
+| `1`    |  `uint8_t` `is_stored`                             |
+| `32`   | Ping ID or Public Key                              |
+| `[0,]` | Maximum of 4 nodes in packed node format (see DHT) |
 
 The packet contains a ping ID if `is_stored` is 0 or 2, or the public key that
 must be used to send data packets if `is_stored` is 1.
@@ -4067,12 +4067,12 @@ announced successfully.
 
 data to route response packet:
 
-| Length   | Contents                            |
-|:---------|:------------------------------------|
-| `1`      | `uint8_t` (0x86)                    |
-| `24`     | Nonce                               |
-| `32`     | Temporary just generated public key |
-| variable | Payload                             |
+| Length | Contents                            |
+|:-------|:------------------------------------|
+| `1`    | `uint8_t` (0x86)                    |
+| `24`   | Nonce                               |
+| `32`   | Temporary just generated public key |
+| `[0,]` | Payload                             |
 
 The payload is encrypted with that temporary secret key, the nonce and the
 public key from the announce response packet of the destination node.
@@ -4359,10 +4359,10 @@ Onion data packets are packets sent as the data of data to route packets.
 
 Onion data packets:
 
-| Length   | Contents                       |
-|:---------|:-------------------------------|
-| `32`     | Long term public key of sender |
-| variable |  Payload                       |
+| Length | Contents                       |
+|:-------|:-------------------------------|
+| `32`   | Long term public key of sender |
+| `[0,]` |  Payload                       |
 
 The payload is encrypted with long term private key of the sender, the long
 term public key of the receiver and the nonce used in the data to route request
@@ -4405,12 +4405,12 @@ sent is low.
 When sent as a DHT request packet (this is the data sent in the DHT request
 packet):
 
-| Length   | Contents                       |
-|:---------|:-------------------------------|
-| `1`      | `uint8_t` (0x9c)               |
-| `32`     | Long term public key of sender |
-| `24`     | Nonce                          |
-| variable | Encrypted payload              |
+| Length | Contents                       |
+|:-------|:-------------------------------|
+| `1`    | `uint8_t` (0x9c)               |
+| `32`   | Long term public key of sender |
+| `24`   | Nonce                          |
+| `[0,]` | Encrypted payload              |
 
 The payload is encrypted with long term private key of sender, the long term
 public key of receiver and the nonce, and contains the DHT public key packet.
