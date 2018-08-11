@@ -1,18 +1,15 @@
-language: haskell
-ghc: 7.8
+language: generic
 
-cache:
-  directories:
-  - $HOME/.cabal
-  - $HOME/.ghc
+before_install:
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://github.com/TokTok/hs-tools/releases/download/v0.3/hs-tools-v0.3.tar.gz | tar xz -C $HOME
 
 install:
 - mkdir -p ~/rust-installer ~/rust
 - curl -sL https://static.rust-lang.org/rustup.sh -o ~/rust-installer/rustup.sh
 - sh ~/rust-installer/rustup.sh --prefix=~/rust --spec=stable -y --disable-sudo 2> /dev/null
-- export PATH=$PATH:$HOME/rust/bin:$HOME/.cabal/bin
+- export PATH=$PATH:$HOME/rust/bin
 - gem install mdl
-- cabal install pandoc-1.17.2
 
 script:
 - make

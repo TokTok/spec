@@ -35,8 +35,8 @@ the reader with:
 
 -   **End-to-end encryption:** The Tox protocol establishes end-to-end
     encrypted communication links. Shared keys are deterministically derived
-    using a Diffie-Hellman-like method, so keys are never transferred over
-    the network.
+    using a Diffie-Hellman-like method, so keys are never transferred over the
+    network.
 
 -   **Forward secrecy**: Session keys are re-negotiated when the peer
     connection is established.
@@ -49,11 +49,10 @@ the reader with:
         well-known node called a bootstrap node. Anyone can run a bootstrap
         node, and users need not put any trust in them.
 
-    -   Tox tries to establish communication paths in difficult
-        network situations. This includes connecting to peers behind a NAT
-        or firewall. Various techniques help achieve this, such as UDP
-        hole-punching, UPnP, NAT-PMP, other untrusted nodes acting as relays,
-        and DNS tunnels.
+    -   Tox tries to establish communication paths in difficult network
+        situations. This includes connecting to peers behind a NAT or firewall.
+        Various techniques help achieve this, such as UDP hole-punching, UPnP,
+        NAT-PMP, other untrusted nodes acting as relays, and DNS tunnels.
 
     -   Resistance to basic denial of service attacks: short timeouts make the
         network dynamic and resilient against poisoning attempts.
@@ -403,8 +402,8 @@ won't influence that decision.
 XOR is a valid metric, i.e. it satisfies the required conditions:
 
 1.  Non-negativity `distance(x, y) >= 0`: Since public keys are Crypto Numbers,
-    which are by definition non-negative, their XOR is
-    necessarily non-negative.
+    which are by definition non-negative, their XOR is necessarily
+    non-negative.
 
 2.  Identity of indiscernibles `distance(x, y) == 0` iff `x == y`: The XOR of
     two integers is zero iff they are equal.
@@ -576,6 +575,9 @@ operation has no effect.
 Removing a search key removes its search entry and all associated data
 structures from memory.
 
+The Close List and the Search Entries are termed the `Node Lists` of the DHT
+State.
+
 The iteration order over the DHT state is to first process the Close List
 k-buckets, then the Search List entry Client Lists. Each of these follows the
 iteration order in the corresponding specification.
@@ -646,6 +648,14 @@ for the [Ping Packet](#ping-service).
 A DHT RPC Service consists of a Request packet and a Response packet. A DHT RPC
 Packet contains a payload and a Request ID. This ID is a 64 bit unsigned
 integer that helps identify the response for a given request.
+
+### Replies to RPC requests
+
+A *reply* to a Request packet is a Response packet with the Request ID in the
+Response packet set equal to the Request ID in the Request packet. A response
+is accepted if and only if it is the first received reply to a request which
+was sent sufficiently recently, according to a time limit which depends on the
+service.
 
 DHT RPC Packets are encrypted and transported within DHT Packets.
 
@@ -1878,8 +1888,8 @@ How it accomplishes each of those points:
         connection (no effect).
 
     -   Attacker captures a server response and sends it to the client next
-        time they try to connect to the server: Client will never confirm
-        the connection. (See: `TCP_client`)
+        time they try to connect to the server: Client will never confirm the
+        connection. (See: `TCP_client`)
 
     -   Attacker tries to impersonate a server: They won't be able to decrypt
         the handshake and won't be able to respond.
@@ -1897,8 +1907,8 @@ How it accomplishes each of those points:
 
 1.  2 bytes before each packet of encrypted data denote the length. We assume a
     functioning TCP will deliver bytes in order which makes it work. If the TCP
-    doesn't it most likely means it is under attack and for that see the
-    next point.
+    doesn't it most likely means it is under attack and for that see the next
+    point.
 
 2.  The following attacks are prevented:
 
@@ -2690,8 +2700,8 @@ docs see the groupchats section of the tox.h header file.
 
 -   Password protection
 
--   Self-repairing (auto-rejoin on disconnect, group split protection,
-    state syncing)
+-   Self-repairing (auto-rejoin on disconnect, group split protection, state
+    syncing)
 
 -   Identity separation from the Tox ID
 
@@ -2715,8 +2725,8 @@ have all the privileges of lower roles).
 -   **Moderator** - Promoted by the founder. May kick, ban and set the user and
     observer roles for peers below this role. May also set the topic.
 
--   **User** - Default non-founder role. May communicate with other
-    peers normally.
+-   **User** - Default non-founder role. May communicate with other peers
+    normally.
 
 -   **Observer** - Demoted by moderators and the founder. May observe the group
     and ignore peers; may not communicate with other peers or with the group.
@@ -2962,7 +2972,7 @@ to the entire group.
 ## State syncing
 
 Peers send four unsigned 32-bit integers along with their ping packets: Their
-peer count\[1\], their shared state version, their sanctions credentials
+peer count[^1], their shared state version, their sanctions credentials
 version, and their topic version. If a peer receives a ping in which any of
 these values are greater than their own, this indicates that they may be out of
 sync with the rest of the group. In this case they will do one of two things:
@@ -3326,8 +3336,8 @@ requirements:
 
 1.  The handshake must not leak the long term public keys of the peers to a
     possible attacker who would be looking at the packets but each peer must
-    know for sure that they are connecting to the right peer and not
-    an impostor.
+    know for sure that they are connecting to the right peer and not an
+    impostor.
 
 2.  A connection must be able of being established if only one of the peers has
     the information necessary to initiate a connection (DHT public key of the
@@ -3890,6 +3900,7 @@ initial (sent from node D to node C):
 -   Encrypted with the temporary symmetric key of Node A and the nonce:
 
     -   `IP_Port` (of us)
+
 -   Data to send back
 
 (sent from node A to us):
@@ -4660,18 +4671,18 @@ content and thus it's length is 0.
 
 # Testing
 
-The final part of the architecture is the test protocol. We use a MessagePack
-(<https://msgpack.org>) based RPC protocol to expose language agnostic
-interfaces to internal functions. Using property based testing with random
-inputs as well as specific edge case tests help ensure that an implementation
-of the Tox protocol following the architecture specified in this document is
-correct.
+The final part of the architecture is the test protocol. We use a
+[MessagePack](https://msgpack.org) based RPC protocol to expose language
+agnostic interfaces to internal functions. Using property based testing with
+random inputs as well as specific edge case tests help ensure that an
+implementation of the Tox protocol following the architecture specified in this
+document is correct.
 
 See the [spec](https://github.com/msgpack/msgpack/blob/master/spec.md) of
 msgpack for information on the binary representation.
 
 TODO(iphydf): Generate and add specifications of each test method here.
 
-\[1\] We use a "real" peer count, which is the number of confirmed peers in the
-peerlist (that is, peers who you have successfully handshaked and exchanged
-peer info with).
+[^1]: We use a "real" peer count, which is the number of confirmed peers in the
+    peerlist (that is, peers who you have successfully handshaked and exchanged
+    peer info with).

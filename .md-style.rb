@@ -4,6 +4,8 @@ all
 rule 'MD007', :indent => 4
 # Pandoc generates numbered ordered lists.
 rule 'MD029', :style => 'ordered'
+# We use indented code blocks.
+rule 'MD046', :style => 'indented'
 # Pandoc generates lists with the following configured spacing after the list
 # marker.
 rule 'MD030', :ul_single => 3, :ol_single => 2, :ul_multi => 3, :ol_multi => 2
