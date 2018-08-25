@@ -41,6 +41,13 @@ the reader with:
 -   **Forward secrecy**: Session keys are re-negotiated when the peer
     connection is established.
 
+-   **Privacy**: When Tox establishes a communication link, it aims to avoid
+    leaking to any third party the identities of the parties involved (i.e.
+    their public keys).
+
+    Furthermore, it aims to avoid allowing third parties to determine the IP
+    address of a given user.
+
 -   **Resilience:**
 
     -   Independence of infrastructure: Tox avoids relying on servers as much
@@ -66,15 +73,12 @@ the reader with:
 -   **Anonymity** is not in scope for the Tox protocol itself, but it provides
     an easy way to integrate with software providing anonymity, such as Tor.
 
-    By default, Tox tries to establish direct connections between peers, so
-    they are aware of each other's IP address. One of the reasons for this is
-    that relaying real-time multimedia conversations over anonymity networks is
-    not feasible with the current network infrastructure.
-
-    The exception is for the initial friend request, where Tox provides a
-    simple onion routing protocol to prevent an attacker from finding the IP
-    address of any arbitrary node by public key. This ability would give an
-    attacker a means for targetted denial of service attacks on users.
+    By default, Tox tries to establish direct connections between peers; as a
+    consequence, each is aware of the other's IP address, and third parties may
+    be able to determine that a connection has been established between those
+    IP addresses. One of the reasons for making direct connections is that
+    relaying real-time multimedia conversations over anonymity networks is not
+    feasible with the current network infrastructure.
 
 ## Threat model
 
