@@ -4417,7 +4417,11 @@ After this, toxcore sends requests once per 15 seconds initially, then uses
 linear backoff to increase the interval. In detail, the interval used when
 searching for a given friend is at least 15 and at most 2400 seconds, and
 within these bounds is calculated as one quarter of the time since we began
-searching for the friend or some peer reported that the friend was announced.
+searching for the friend, or since the friend was last seen. For this purpose,
+a friend is considered to be seen when some peer reports that the friend is
+announced, or we receive a DHT Public Key packet from the friend, or we obtain
+a new DHT key for them from a group, or a friend connection for the friend goes
+offline.
 
 There are other ways this could be done and which would still work but, if
 making your own implementation, keep in mind that these are likely not the most
@@ -4452,7 +4456,12 @@ DHT public key packet:
 The packet will only be accepted if the `no_replay` number is greater than the
 `no_replay` number in the last packet received.
 
-The nodes sent in this packet have TCP so that the friend can connect to us.
+The nodes sent in the packet comprise 2 TCP relays to which we are connected
+(or fewer if there are not 2 available) and a number of DHT nodes from our
+Close List, with the total number of nodes sent being at most 4. The nodes
+chosen from the Close List are those closest in DHT distance to us. This allows
+the friend to find us more easily in the DHT, or to connect to us via a TCP
+relay.
 
 Why another round of encryption? We have to prove to the receiver that we own
 the long term public key we say we own when sending them our DHT public key.
