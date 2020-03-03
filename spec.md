@@ -748,7 +748,7 @@ response has in their lists of known nodes.
 
 A new DHT node is initialised with a DHT State with a fresh random key pair, an
 empty close list, and a search list containing 2 empty search entries searching
-for randomly generated public keys.
+for the public keys of fresh random key pairs.
 
 ### Periodic sending of Nodes Requests
 
@@ -2645,6 +2645,12 @@ Tell everyone about a new peer in the chat.
 |:-------|:-----------------------|
 | `2`    | `uint16_t` Peer number |
 
+### `freeze_peer` (0x12)
+
+| Length | Contents               |
+|:-------|:-----------------------|
+| `2`    | `uint16_t` Peer number |
+
 ### Name change (0x30)
 
 | Length   | Contents       |
@@ -2678,8 +2684,10 @@ peer message is received, the peer in the message must be added to the peer
 list if it is not there already, and its DHT public key must be set to that in
 the message.
 
-Kill peer messages are used to indicate that a peer has quit the group chat. It
-is sent by the one quitting the group chat right before they quit it.
+Kill peer messages are used to indicate that a peer has quit the group chat
+permanently. Freeze peer messages are similar, but indicate that the quitting
+peer may later return to the group. Each is sent by the one quitting the group
+chat right before they quit it.
 
 Name change messages are used to change or set the name of the peer sending it.
 They are also sent by a joining peer right after receiving the list of peers in
@@ -2728,6 +2736,9 @@ after unfreezing the peer if it was frozen, we update the peer's DHT public key
 in the groupchat peer list to the key in the friend connection, and create a
 groupchat connection for the peer, marked as introducing the peer, and send a
 peer online packet to the peer.
+
+When a peer is added to the peer list, any existing peer in the peer list or
+frozen peers list with the same public key is first removed.
 
 # DHT Group Chats
 
@@ -4602,6 +4613,7 @@ Section types:
 | Status        | 0x06  |
 | TcpRelays     | 0x0A  |
 | PathNodes     | 0x0B  |
+| Conferences   | 0x14  |
 | EOF           | 0xFF  |
 
 Not every section listed above is required to be present in order to restore
@@ -4734,10 +4746,46 @@ This section contains a list of path nodes used for onion routing.
 The structure of a path node is the same as `Node Info`. Note: this means that
 the integers stored in these nodes are stored in Big Endian as well.
 
+### Conferences (0x14)
+
+This section contains a list of saved conferences.
+
+| Length | Contents            |
+|:-------|:--------------------|
+| `?`    | List of conferences |
+
+Conference:
+
+| Length | Contents             |
+|:-------|:---------------------|
+| `1`    | Groupchat type       |
+| `32`   | Groupchat id         |
+| `4`    | Message number       |
+| `2`    | Lossy message number |
+| `2`    | Peer number          |
+| `4`    | Number of peers      |
+| `1`    | Title length         |
+| `?`    | Title                |
+| `?`    | List of peers        |
+
+All peers other than the saver are saved, including frozen peers. On reload,
+they all start as frozen.
+
+Peer:
+
+| Length | Contents              |
+|:-------|:----------------------|
+| `32`   | Long term public key  |
+| `32`   | DHT public key        |
+| `16`   | Peer number           |
+| `64`   | Last active timestamp |
+| `1`    | Name length           |
+| `?`    | Name                  |
+
 ### EOF (0xFF)
 
 This section indicates the end of the state file. This section doesn't have any
-content and thus it's length is 0.
+content and thus its length is 0.
 
 # Testing
 
