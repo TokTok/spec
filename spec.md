@@ -4676,8 +4676,7 @@ sent a friend request to or a peer we've accepted a friend request from.
 
 Friend:
 
-Some of the integers in this structure are stored in Big Endian. This is
-denoted with "(BE)".
+The integers in this structure are stored in Big Endian format.
 
 | Length | Contents                                                   |
 |:-------|:-----------------------------------------------------------|
@@ -4685,12 +4684,12 @@ denoted with "(BE)".
 | `32`   | Long term public key                                       |
 | `1024` | Friend request message as a byte string                    |
 | `1`    | PADDING                                                    |
-| `2`    | `uint16_t` Size of the friend request message (BE)         |
+| `2`    | `uint16_t` Size of the friend request message              |
 | `128`  | Name as a byte string                                      |
-| `2`    | `uint16_t` Size of the name (BE)                           |
+| `2`    | `uint16_t` Size of the name                                |
 | `1007` | Status message as a byte string                            |
 | `1`    | PADDING                                                    |
-| `2`    | `uint16_t` Size of the status message (BE)                 |
+| `2`    | `uint16_t` Size of the status message                      |
 | `1`    | `uint8_t` User status (see also: `USERSTATUS`)             |
 | `3`    | PADDING                                                    |
 | `4`    | `uint32_t` Nospam (only used for sending a friend request) |
@@ -4756,31 +4755,31 @@ This section contains a list of saved conferences.
 
 Conference:
 
-| Length | Contents             |
-|:-------|:---------------------|
-| `1`    | Groupchat type       |
-| `32`   | Groupchat id         |
-| `4`    | Message number       |
-| `2`    | Lossy message number |
-| `2`    | Peer number          |
-| `4`    | Number of peers      |
-| `1`    | Title length         |
-| `?`    | Title                |
-| `?`    | List of peers        |
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` Groupchat type        |
+| `32`   | Groupchat id                    |
+| `4`    | `uint32_t` Message number       |
+| `2`    | `uint16_t` Lossy message number |
+| `2`    | `uint16_t` Peer number          |
+| `4`    | `uint32_t` Number of peers      |
+| `1`    | `uint8_t` Title length          |
+| `?`    | Title                           |
+| `?`    | List of peers                   |
 
 All peers other than the saver are saved, including frozen peers. On reload,
 they all start as frozen.
 
 Peer:
 
-| Length | Contents              |
-|:-------|:----------------------|
-| `32`   | Long term public key  |
-| `32`   | DHT public key        |
-| `16`   | Peer number           |
-| `64`   | Last active timestamp |
-| `1`    | Name length           |
-| `?`    | Name                  |
+| Length | Contents                         |
+|:-------|:---------------------------------|
+| `32`   | Long term public key             |
+| `32`   | DHT public key                   |
+| `2`    | `uint16_t` Peer number           |
+| `8`    | `uint64_t` Last active timestamp |
+| `1`    | `uint8_t` Name length            |
+| `?`    | Name                             |
 
 ### EOF (0xFF)
 
