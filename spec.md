@@ -2364,7 +2364,7 @@ Invite packet:
 | `2`    | `uint16_t` group number |
 | `33`   | Group chat identifier   |
 
-Response packet:
+Accept Invite packet:
 
 | Length | Contents                        |
 |:-------|:--------------------------------|
@@ -2373,6 +2373,17 @@ Response packet:
 | `2`    | `uint16_t` group number (local) |
 | `2`    | `uint16_t` group number to join |
 | `33`   | Group chat identifier           |
+
+Member Information packet:
+
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `1`    | `uint8_t` (0x60)                |
+| `1`    | `uint8_t` (0x02)                |
+| `2`    | `uint16_t` group number (local) |
+| `2`    | `uint16_t` group number to join |
+| `33`   | Group chat identifier           |
+| `2`    | `uint16_t` peer number          |
 
 A group chat identifier consists of a 1-byte type and a 32-byte id
 concatenated:
@@ -2399,24 +2410,36 @@ it.
 
 To accept the invite, the friend will create their own groupchat instance with
 the 1 byte type and 32 byte groupchat id sent in the request, and send an
-invite response packet back. The friend will also add the peer who sent the
+invite accept packet back. The friend will also add the peer who sent the
 invite as a groupchat connection, and mark the connection as introducing the
 friend.
 
-The first group number in the response packet is the group number of the
+If the friend being invited is already in the group, they will respond with a
+member information packet, add the peer who sent the invite as a groupchat
+connection, and mark the connection as introducing both the friend and the peer
+who sent the invite.
+
+The first group number in the invite accept packet is the group number of the
 groupchat the invited friend just created. The second group number is the group
 number that was sent in the invite request. What follows is the 33 byte group
-chat identifier which was sent in the invite request.
+chat identifier which was sent in the invite request. The member information
+packet is the same, but includes also the current peer number of the invited
+friend.
 
-When a peer receives an invite response packet they will check if the group
+When a peer receives an invite accept packet they will check if the group
 identifier sent back corresponds to the group identifier of the groupchat with
 the group number also sent back. If so, a new peer number will be generated for
-the peer that sent the invite response packet. Then the peer with their
-generated peer number, their long term public key and their DHT public key will
-be added to the peer list of the groupchat. A new peer message packet will also
-be sent to tell everyone in the group chat about the new peer. The peer will
-also be added as a groupchat connection, and the connection will be marked as
+the peer that sent the invite accept packet. Then the peer with their generated
+peer number, their long term public key and their DHT public key will be added
+to the peer list of the groupchat. A new peer message packet will also be sent
+to tell everyone in the group chat about the new peer. The peer will also be
+added as a groupchat connection, and the connection will be marked as
 introducing the peer.
+
+When a peer receives a member information packet they proceed as with an invite
+accept packet, but use the peer number in the packet rather than generating a
+new one, and mark the new connection as also introducing the peer receiving the
+member information packet.
 
 Peer numbers are used to uniquely identify each peer in the group chat. They
 are used in groupchat message packets so that peers receiving them can know who
@@ -2602,8 +2625,9 @@ another message of the same type from the same sender with a greater message
 number has been received, then the packet is discarded. Otherwise, the message
 is processed as described below, and a Message packet with the message is sent
 (relayed) to all current group connections except the one that it was received
-from. The only thing that should change in the Message packet as it is relayed
-is the group number.
+from, and also to that one if that peer is the original sender of the message.
+The only thing that should change in the Message packet as it is relayed is the
+group number.
 
 Lossy message packets are used to send audio packets to others in audio group
 chats. Lossy packets work the same way as normal relayed groupchat messages in
