@@ -1,0 +1,9 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  common:
+    uses: TokTok/ci-tools/.github/workflows/common-ci.yml@master
